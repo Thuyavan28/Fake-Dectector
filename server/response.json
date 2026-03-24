@@ -1,0 +1,30 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"verdict\": \"FAKE\",\n  \"confidence\": 95,\n  \"explanation\": \"Saturn is the 6th planet from the Sun. Earth is the 3rd planet from the Sun.\",\n  \"corrected_fact\": \"Saturn is the 6th planet from the Sun.\",\n  \"data_points\": {\n    \"labels\": [\"Truthfulness\", \"Source Credibility\", \"Evidence Quality\", \"Logic\"],\n    \"values\": [10, 50, 50, 10]\n  }\n}"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 175,
+    "candidatesTokenCount": 123,
+    "totalTokenCount": 1028,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 175
+      }
+    ],
+    "thoughtsTokenCount": 730
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "pBjCaeWJEZvbjuMPscnR8AM"
+}
