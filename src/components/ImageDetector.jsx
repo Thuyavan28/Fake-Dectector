@@ -46,15 +46,15 @@ const styleBlock = `
   to { opacity: 1; }
 }
 @keyframes scaleInCard {
-  from { transform: translate(-50%, -50%) scale(0.85); opacity: 0; }
-  to   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
 }
 @keyframes shakeCard {
-  0%, 100% { transform: translate(-50%, -50%) translateX(0); }
-  20%      { transform: translate(-50%, -50%) translateX(-8px); }
-  40%      { transform: translate(-50%, -50%) translateX(8px); }
-  60%      { transform: translate(-50%, -50%) translateX(-5px); }
-  80%      { transform: translate(-50%, -50%) translateX(5px); }
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-8px); }
+  40%      { transform: translateX(8px); }
+  60%      { transform: translateX(-5px); }
+  80%      { transform: translateX(5px); }
 }
 @keyframes pulseBadge {
   0%, 100% { opacity: 1; }
@@ -74,37 +74,37 @@ const styleBlock = `
 
 .result-card-modal {
   position: fixed;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
   z-index: 1050;
-  width: 90%;
-  max-width: 860px;
-  max-height: 90vh;
   overflow-y: auto;
-  border-radius: 20px;
-  padding: 40px;
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
-.result-card-modal::-webkit-scrollbar { width: 8px; }
+.result-card-modal::-webkit-scrollbar { width: 6px; }
 .result-card-modal::-webkit-scrollbar-track { background: transparent; }
-.result-card-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+.result-card-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
 
 .card-ai {
-  background: linear-gradient(180deg, #1a0808, #0f0f0f);
-  border: 2px solid #ef4444;
-  box-shadow: 0 0 0 1px #ef4444, 0 0 40px rgba(239,68,68,0.3), 0 0 80px rgba(239,68,68,0.1), 0 25px 60px rgba(0,0,0,0.8);
+  background: linear-gradient(180deg, #1a0808ee, #0f0f0fee);
+  border-top: 2px solid #ef4444;
+  border-bottom: 2px solid #ef4444;
+  box-shadow: inset 0 0 80px rgba(239,68,68,0.08);
   animation: scaleInCard 0.4s ease, shakeCard 0.5s ease;
 }
 
 .card-human {
-  background: linear-gradient(180deg, #071a0e, #0f0f0f);
-  border: 2px solid #22c55e;
-  box-shadow: 0 0 0 1px #22c55e, 0 0 40px rgba(34,197,94,0.3), 0 0 80px rgba(34,197,94,0.1), 0 25px 60px rgba(0,0,0,0.8);
+  background: linear-gradient(180deg, #071a0eee, #0f0f0fee);
+  border-top: 2px solid #22c55e;
+  border-bottom: 2px solid #22c55e;
+  box-shadow: inset 0 0 80px rgba(34,197,94,0.06);
   animation: scaleInCard 0.4s cubic-bezier(0.34,1.56,0.64,1);
 }
 
 .modal-close-btn {
-  position: absolute;
+  position: fixed;
   top: 16px; right: 16px;
   width: 36px; height: 36px;
   border-radius: 50%;
@@ -115,22 +115,16 @@ const styleBlock = `
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.2s;
+  z-index: 1060;
 }
 .modal-close-btn:hover {
   background: rgba(255,255,255,0.2);
 }
 
 @media (max-width: 768px) {
-  .result-card-modal {
-    width: 95%;
-    padding: 24px;
-  }
-  .card-top-row {
-    flex-direction: column;
-    text-align: center;
-    gap: 20px;
-  }
-  .card-title { font-size: 36px !important; }
+  .result-card-modal { padding: 16px; }
+  .card-top-row { flex-direction: column; text-align: center; gap: 12px; }
+  .card-title { font-size: 28px !important; }
   .charts-grid { grid-template-columns: 1fr !important; }
 }
 `;
@@ -246,7 +240,7 @@ function ConfidenceMeter({ value, color }) {
 function ScanLoading({ imageUrl, step, progress }) {
   const steps = [
     '🔍 Compressing and uploading image...',
-    '🧠 Gemini Vision analyzing pixels...',
+    '🧠 Vision AI analyzing pixels...',
     '🎨 Checking AI generation artifacts...',
     '🛡️ Running content safety scan...',
     '📊 Computing confidence scores...',
@@ -271,7 +265,7 @@ function ScanLoading({ imageUrl, step, progress }) {
         <motion.div style={{ height: '100%', background: 'linear-gradient(90deg, #3b82f6, #00ff88)', borderRadius: 99 }} animate={{ width: `${progress}%` }} />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-        <p style={{ color: '#475569', fontSize: 12 }}>Analyzing with Gemini Vision AI...</p>
+        <p style={{ color: '#475569', fontSize: 12 }}>Analyzing with Vision AI...</p>
         <p style={{ color: '#64748b', fontSize: 12, fontFamily: 'monospace' }}>{progress}%</p>
       </div>
     </div>
@@ -393,7 +387,7 @@ export default function ImageDetector() {
       {file && !loading && (
         <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={analyze}
           style={{ width: '100%', marginTop: 16, padding: '15px 0', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: '#fff', fontSize: 16, fontWeight: 700, border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: "'Bebas Neue', cursive", letterSpacing: 2 }}>
-          🔍 ANALYZE WITH GEMINI VISION
+          🔍 ANALYZE WITH VISION AI
         </motion.button>
       )}
 
@@ -408,79 +402,87 @@ export default function ImageDetector() {
             <button className="modal-close-btn" onClick={closeOverlay}>✕</button>
             
             {isAI && (
-              <div style={{ position: 'absolute', top: 16, right: 64, background: badgeBg, padding: '4px 12px', borderRadius: 20, color: badgeColor, fontSize: 11, fontWeight: 'bold', letterSpacing: 1, border: `1px solid ${badgeColor}`, animation: 'pulseBadge 1.5s infinite', zIndex: 10 }}>{badgeLabel}</div>
+              <div style={{ position: 'fixed', top: 16, right: 64, background: badgeBg, padding: '4px 12px', borderRadius: 20, color: badgeColor, fontSize: 11, fontWeight: 'bold', letterSpacing: 1, border: `1px solid ${badgeColor}`, animation: 'pulseBadge 1.5s infinite', zIndex: 1070 }}>{badgeLabel}</div>
             )}
 
-            {/* TOP ROW */}
-            <div className="card-top-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <span style={{ fontSize: 48 }}>{isAI ? '🤖' : '📷'}</span>
-                <div>
-                  <h2 className="card-title" style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 52, color: COLOR, margin: 0, letterSpacing: 4, lineHeight: 1 }}>{isAI ? 'AI GENERATED' : 'HUMAN CREATED'}</h2>
-                  <p style={{ color: '#94a3b8', fontSize: 14, margin: '4px 0 0 0', fontFamily: "'DM Sans', sans-serif" }}>{isAI ? 'Artificial Intelligence Detected' : 'Authentic Photograph Detected'}</p>
-                </div>
-              </div>
-              <ConfidenceMeter value={result.ai_confidence || 0} color={COLOR} />
-            </div>
+            {/* MAX-WIDTH CENTERING WRAPPER */}
+            <div style={{ maxWidth: 1100, margin: '0 auto', width: '100%' }}>
 
-            {/* AI INDICATORS */}
-            {isAI && result.ai_indicators?.length > 0 && (
-              <div style={{ marginTop: 24, background: 'rgba(239,68,68,0.08)', padding: '16px 20px', borderRadius: 8, borderLeft: '4px solid #ef4444' }}>
-                <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#94a3b8', margin: 0, textTransform: 'uppercase' }}>⚠️ AI GENERATION SIGNALS:</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-                  {result.ai_indicators.map((ind, i) => (
-                    <motion.span key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}
-                      style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 20, padding: '6px 14px', fontSize: 13, color: '#f1f5f9', fontFamily: "'DM Sans', sans-serif" }}>
-                      ⚠️ {ind}
-                    </motion.span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* EXPLANATION */}
-            <div style={{ marginTop: 24, animation: 'fadeInOverlay 0.5s ease 0.3s both' }}>
-              <p style={{ fontWeight: 600, fontSize: 12, color: COLOR, textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 8px 0', fontFamily: "'DM Sans', sans-serif" }}>WHY THIS WAS FLAGGED</p>
-              <p style={{ color: '#cbd5e1', fontSize: 15, lineHeight: 1.7, margin: 0, fontFamily: "'DM Sans', sans-serif" }}>{result.ai_explanation}</p>
-            </div>
-
-            {/* SAFETY GRID */}
-            <div style={{ marginTop: 24 }}>
-              <p style={{ fontWeight: 600, fontSize: 12, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 12px 0', fontFamily: "'DM Sans', sans-serif" }}>CONTENT SAFETY ANALYSIS</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {[
-                  { icon: '🔞', label: 'Adult Content', unsafe: result.content_safety?.adult_content },
-                  { icon: '🔪', label: 'Violence', unsafe: result.content_safety?.violence },
-                  { icon: '👤', label: 'Fake Person', unsafe: result.content_safety?.fake_person },
-                  { icon: '⛔', label: 'Hate Content', unsafe: result.content_safety?.hate_content },
-                  { icon: '📢', label: 'Misleading', unsafe: result.content_safety?.misleading },
-                  { icon: '🛡️', label: 'Overall Safety', unsafe: !result.content_safety?.overall_safe },
-                ].map((s, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', padding: '10px 14px', borderRadius: 8 }}>
-                    <span style={{ fontSize: 14, color: '#f1f5f9', fontFamily: "'DM Sans', sans-serif" }}>{s.icon} <span style={{ marginLeft: 8 }}>{s.label}</span></span>
-                    {s.unsafe ? (
-                      <span style={{ background: '#450a0a', color: '#ef4444', border: '1px solid #ef4444', padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 'bold', animation: 'pulseBadge 1.5s infinite' }}>DETECTED ⚠️</span>
-                    ) : (
-                      <span style={{ background: '#052e16', color: '#22c55e', border: '1px solid #22c55e', padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 'bold' }}>SAFE ✅</span>
-                    )}
+              {/* TOP ROW */}
+              <div className="card-top-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <span style={{ fontSize: 44 }}>{isAI ? '🤖' : '📷'}</span>
+                  <div>
+                    <h2 className="card-title" style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 48, color: COLOR, margin: 0, letterSpacing: 4, lineHeight: 1 }}>{isAI ? 'AI GENERATED' : 'HUMAN CREATED'}</h2>
+                    <p style={{ color: '#94a3b8', fontSize: 14, margin: '4px 0 0 0', fontFamily: "'DM Sans', sans-serif" }}>{isAI ? 'Artificial Intelligence Detected' : 'Authentic Photograph Detected'}</p>
                   </div>
-                ))}
+                </div>
+                <ConfidenceMeter value={result.ai_confidence || 0} color={COLOR} />
               </div>
-            </div>
 
-            {/* CHARTS */}
-            {result.image_scores?.labels?.length > 0 && (
-              <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 24 }}>
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 20 }}>
-                  <p style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 18, color: '#f1f5f9', letterSpacing: 1, margin: '0 0 16px 0' }}>Image Analysis Breakdown</p>
-                  <DoughnutChart image_scores={result.image_scores} isAI={isAI} chartJsLoaded={chartJsLoaded} />
+              {/* AI INDICATORS */}
+              {isAI && result.ai_indicators?.length > 0 && (
+                <div style={{ marginTop: 14, background: 'rgba(239,68,68,0.08)', padding: '12px 16px', borderRadius: 8, borderLeft: '4px solid #ef4444' }}>
+                  <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#94a3b8', margin: 0, textTransform: 'uppercase' }}>⚠️ AI GENERATION SIGNALS:</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                    {result.ai_indicators.map((ind, i) => (
+                      <motion.span key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}
+                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 20, padding: '4px 12px', fontSize: 12, color: '#f1f5f9', fontFamily: "'DM Sans', sans-serif" }}>
+                        ⚠️ {ind}
+                      </motion.span>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 20 }}>
-                  <p style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 18, color: '#f1f5f9', letterSpacing: 1, margin: '0 0 16px 0' }}>Quality Score Analysis</p>
-                  <BarChart image_scores={result.image_scores} isAI={isAI} chartJsLoaded={chartJsLoaded} />
-                </div>
+              )}
+
+              {/* EXPLANATION */}
+              <div style={{ marginTop: 14, animation: 'fadeInOverlay 0.5s ease 0.3s both' }}>
+                <p style={{ fontWeight: 600, fontSize: 11, color: COLOR, textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 5px 0', fontFamily: "'DM Sans', sans-serif" }}>WHY THIS WAS FLAGGED</p>
+                <p style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.6, margin: 0, fontFamily: "'DM Sans', sans-serif" }}>{result.ai_explanation}</p>
               </div>
-            )}
+
+              {/* SIDE-BY-SIDE: SAFETY + CHARTS */}
+              <div style={{ display: 'grid', gridTemplateColumns: result.image_scores?.labels?.length > 0 ? '1fr 1fr' : '1fr', gap: 16, marginTop: 14 }}>
+                {/* SAFETY GRID */}
+                <div>
+                  <p style={{ fontWeight: 600, fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 8px 0', fontFamily: "'DM Sans', sans-serif" }}>CONTENT SAFETY ANALYSIS</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {[
+                      { icon: '🔞', label: 'Adult Content', unsafe: result.content_safety?.adult_content },
+                      { icon: '🔪', label: 'Violence', unsafe: result.content_safety?.violence },
+                      { icon: '👤', label: 'Fake Person', unsafe: result.content_safety?.fake_person },
+                      { icon: '⛔', label: 'Hate Content', unsafe: result.content_safety?.hate_content },
+                      { icon: '📢', label: 'Misleading', unsafe: result.content_safety?.misleading },
+                      { icon: '🛡️', label: 'Overall Safety', unsafe: !result.content_safety?.overall_safe },
+                    ].map((s, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', padding: '8px 12px', borderRadius: 8 }}>
+                        <span style={{ fontSize: 13, color: '#f1f5f9', fontFamily: "'DM Sans', sans-serif" }}>{s.icon} <span style={{ marginLeft: 6 }}>{s.label}</span></span>
+                        {s.unsafe ? (
+                          <span style={{ background: '#450a0a', color: '#ef4444', border: '1px solid #ef4444', padding: '3px 8px', borderRadius: 20, fontSize: 10, fontWeight: 'bold', animation: 'pulseBadge 1.5s infinite' }}>DETECTED ⚠️</span>
+                        ) : (
+                          <span style={{ background: '#052e16', color: '#22c55e', border: '1px solid #22c55e', padding: '3px 8px', borderRadius: 20, fontSize: 10, fontWeight: 'bold' }}>SAFE ✅</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* CHARTS */}
+                {result.image_scores?.labels?.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 14, flex: 1 }}>
+                      <p style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 15, color: '#f1f5f9', letterSpacing: 1, margin: '0 0 8px 0' }}>Image Analysis Breakdown</p>
+                      <DoughnutChart image_scores={result.image_scores} isAI={isAI} chartJsLoaded={chartJsLoaded} />
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 14, flex: 1 }}>
+                      <p style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 15, color: '#f1f5f9', letterSpacing: 1, margin: '0 0 8px 0' }}>Quality Score Analysis</p>
+                      <BarChart image_scores={result.image_scores} isAI={isAI} chartJsLoaded={chartJsLoaded} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>{/* end centering wrapper */}
           </div>
         </>,
         document.body

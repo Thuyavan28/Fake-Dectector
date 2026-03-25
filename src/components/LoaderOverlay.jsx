@@ -5,7 +5,7 @@ import { FiFileText, FiImage, FiMic, FiBriefcase, FiActivity } from 'react-icons
 const STEPS = [
   "▸ Initializing analysis engine...",
   "▸ Processing input data...",
-  "▸ Querying Gemini AI...",
+  "▸ Querying Advanced AI...",
   "▸ Computing confidence scores...",
   "▸ Generating verdict..."
 ]
