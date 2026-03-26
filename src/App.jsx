@@ -122,6 +122,16 @@ export default function App() {
   });
   const isDark = theme === 'dark';
 
+  // ── Mouse Tracking Flashlight ──
+  const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 });
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
@@ -157,9 +167,49 @@ export default function App() {
   const [newsText, setNewsText] = useState('');
   const [jobText, setJobText] = useState('');
   const [audioFile, setAudioFile] = useState(null);
+  const [audioWaveform, setAudioWaveform] = useState(null);
   const [fraudData, setFraudData] = useState({ logins:2, actionTime:900, deviceChanges:0, geoChanges:false, unusualHours:false, copyPaste:false, multiAccount:false, rapidClicks:false });
 
   const audioInputRef = useRef(null);
+
+  // Clear inputs and results when switching modules
+  useEffect(() => {
+    setNewsText('');
+    setJobText('');
+    setAudioFile(null);
+    setAudioWaveform(null);
+    setResult(null);
+    setFraudData({ logins:2, actionTime:900, deviceChanges:0, geoChanges:false, unusualHours:false, copyPaste:false, multiAccount:false, rapidClicks:false });
+  }, [activeModule]);
+
+  // Parse Audio Waveform
+  useEffect(() => {
+    if (!audioFile) { setAudioWaveform(null); return; }
+    const fileReader = new FileReader();
+    fileReader.onload = async (e) => {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const decoded = await audioCtx.decodeAudioData(e.target.result);
+        const channelData = decoded.getChannelData(0);
+        const step = Math.ceil(channelData.length / 80); // 80 bars
+        const bars = [];
+        for (let i = 0; i < 80; i++) {
+          let sum = 0;
+          for (let j = 0; j < step; j++) {
+            const idx = i * step + j;
+            if (idx < channelData.length) sum += Math.abs(channelData[idx]);
+          }
+          bars.push(sum / step);
+        }
+        const max = Math.max(...bars, 0.001);
+        setAudioWaveform(bars.map(b => (b / max) * 100)); // normalized 0-100
+      } catch (err) {
+        console.error("Waveform decode failed", err);
+        setAudioWaveform(Array.from({length: 80}).map(() => Math.random() * 50 + 10)); // fallback mock
+      }
+    };
+    fileReader.readAsArrayBuffer(audioFile);
+  }, [audioFile]);
 
   useEffect(() => {
     const tick = () => { const now = new Date(); setCurrentTime({ h:now.getHours().toString().padStart(2,'0'), m:now.getMinutes().toString().padStart(2,'0'), s:now.getSeconds().toString().padStart(2,'0') }); };
@@ -258,6 +308,16 @@ export default function App() {
           {/* ══ ADVANCED BACKGROUND SYSTEM ══ */}
           {/* Base fill */}
           <div style={{ position:'fixed', inset:0, zIndex:0, background:'var(--bg)', transition:'background 0.4s ease' }} />
+
+          {/* FLASHLIGHT EFFECT */}
+          <div 
+            style={{
+              position: 'fixed', left: 0, top: 0, width: '100%', height: '100%',
+              pointerEvents: 'none', zIndex: 1,
+              background: `radial-gradient(circle 600px at ${mousePos.x}px ${mousePos.y}px, ${isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.015)'}, transparent 80%)`,
+              transition: 'background 0.2s cubic-bezier(0.25, 1, 0.5, 1)'
+            }}
+          />
 
           {/* 5 drifting mesh-gradient orbs */}
           <div className="bg-orb" style={{ width:700, height:700, top:'-10%', left:'-10%', background:`radial-gradient(circle, ${orb1} 0%, transparent 65%)`, animation:'orbDrift1 22s ease-in-out infinite' }} />
@@ -478,14 +538,28 @@ export default function App() {
                           <input ref={audioInputRef} type="file" accept="audio/*" style={{ display:'none' }} onChange={e => setAudioFile(e.target.files[0])} />
                           
                           {audioFile ? (
-                            <motion.div initial={{ scale:0.9, opacity:0 }} animate={{ scale:1, opacity:1 }}>
-                              <div style={{ width:60, height:60, borderRadius:'50%', background:'rgba(34,197,94,0.1)', color:'#22c55e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, margin:'0 auto 16px' }}>✓</div>
+                            <motion.div initial={{ scale:0.9, opacity:0 }} animate={{ scale:1, opacity:1 }} className="flex flex-col items-center w-full">
+                              <div style={{ width:60, height:60, borderRadius:'50%', background:'rgba(34,197,94,0.1)', color:'#22c55e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, margin:'0 auto 16px', boxShadow: '0 0 20px rgba(34,197,94,0.2)' }}>✓</div>
                               <div style={{ color:'#f1f5f9', fontFamily:"'DM Sans', sans-serif", fontWeight:600, fontSize:18 }}>{audioFile.name}</div>
                               <div style={{ color:'#64748b', fontFamily:"'JetBrains Mono', monospace", fontSize:12, marginTop:6 }}>{(audioFile.size/1024).toFixed(1)} KB READY</div>
+                              
+                              {/* AUDIO WAVEFORM */}
+                              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '3px', height: '60px', width: '100%', marginTop: '24px', padding: '0 20px' }}>
+                                {audioWaveform ? audioWaveform.map((h, i) => (
+                                  <motion.div key={i}
+                                    initial={{ height: 0 }}
+                                    animate={{ height: `${Math.max(10, h)}%` }}
+                                    transition={{ type: 'spring', delay: i * 0.01 }}
+                                    style={{ flex: 1, maxWidth: '4px', background: 'linear-gradient(to top, #06b6d4, #22c55e)', borderRadius: '2px', opacity: 0.8 }}
+                                  />
+                                )) : (
+                                  <div style={{ color: '#06b6d4', fontSize: 12, fontFamily: "'JetBrains Mono', monospace", animation: 'pulse 1s infinite' }}>EXTRACTING ACOUSTICS...</div>
+                                )}
+                              </div>
                             </motion.div>
                           ) : (
                             <>
-                              <motion.div animate={{ y:[0,-10,0] }} transition={{ repeat:Infinity, duration:4, ease:'easeInOut' }} style={{ width:72, height:72, borderRadius:'50%', background:'rgba(6,182,212,0.1)', color:'#06b6d4', display:'flex', alignItems:'center', justifyContent:'center', fontSize:32, margin:'0 auto 20px' }}>
+                              <motion.div animate={{ y:[0,-10,0] }} transition={{ repeat:Infinity, duration:4, ease:'easeInOut' }} style={{ width:72, height:72, borderRadius:'50%', background:'rgba(6,182,212,0.1)', color:'#06b6d4', display:'flex', alignItems:'center', justifyContent:'center', fontSize:32, margin:'0 auto 20px', boxShadow: '0 0 30px rgba(6,182,212,0.15)' }}>
                                 🎤
                               </motion.div>
                               <div style={{ color:'#e2e8f0', fontFamily:"'DM Sans', sans-serif", fontSize:18, fontWeight:500, marginBottom:8 }}>Upload Audio Snippet</div>

@@ -56,7 +56,15 @@ export default function LoaderOverlay({ module }) {
       exit={{ opacity: 0, scale: 1.05 }}
       transition={{ duration: 0.4 }}
     >
-      {/* SCANNING LINE EFFECT */}
+      {/* SHARP LASER SCANNER EFFECT */}
+      <div 
+        style={{ 
+          position: 'absolute', left: 0, right: 0, height: '3px', zIndex: 1, pointerEvents: 'none',
+          background: '#06b6d4',
+          boxShadow: '0 0 25px 8px rgba(6,182,212,0.6), inset 0 0 10px #fff',
+          animation: 'laserSweep 2.5s cubic-bezier(0.25, 1, 0.5, 1) infinite alternate'
+        }}
+      />
       <div 
         style={{ 
           position: 'absolute', inset: 0, pointerEvents: 'none',
@@ -67,6 +75,18 @@ export default function LoaderOverlay({ module }) {
       />
       <style>
         {`
+          @keyframes dataFall {
+            0% { top: -10%; opacity: 0; }
+            10% { opacity: 0.5; }
+            90% { opacity: 0.5; }
+            100% { top: 110%; opacity: 0; }
+          }
+          @keyframes laserSweep {
+            0% { top: 5%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 95%; opacity: 0.2; }
+          }
           @keyframes scanDrop {
             0% { background-position: 0 -100vh; }
             100% { background-position: 0 100vh; }
