@@ -203,6 +203,44 @@ function BarChart({ image_scores, isAI, chartJsLoaded }) {
   return <div style={{ height: 200, position: 'relative' }}><canvas ref={canvasRef} /></div>;
 }
 
+function LineChart({ image_scores, isAI, chartJsLoaded }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    if (!chartJsLoaded || !image_scores?.labels?.length || !canvasRef.current) return;
+    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
+    
+    chartRef.current = new window.Chart(canvasRef.current, {
+      type: 'line',
+      data: {
+        labels: image_scores.labels,
+        datasets: [{
+          data: image_scores.values,
+          borderColor: isAI ? '#ef4444' : '#22c55e',
+          backgroundColor: isAI ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)',
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: isAI ? '#ef4444' : '#22c55e',
+          pointRadius: 5
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 1300 },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { family: 'DM Sans', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { min: 0, max: 100, ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        }
+      }
+    });
+    return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
+  }, [image_scores, isAI, chartJsLoaded]);
+
+  return <div style={{ height: 200, position: 'relative' }}><canvas ref={canvasRef} /></div>;
+}
+
 // Circular Confidence SVG Meter
 function ConfidenceMeter({ value, color }) {
   const radius = 54;
@@ -481,6 +519,16 @@ export default function ImageDetector() {
                   </div>
                 )}
               </div>
+
+              {/* NEW ROW FOR ADDITIONAL CHARTS */}
+              {result.image_scores?.labels?.length > 0 && (
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 14 }}>
+                    <p style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 15, color: '#f1f5f9', letterSpacing: 1, margin: '0 0 8px 0' }}>Score Trend Distribution</p>
+                    <LineChart image_scores={result.image_scores} isAI={isAI} chartJsLoaded={chartJsLoaded} />
+                  </div>
+                </div>
+              )}
 
             </div>{/* end centering wrapper */}
           </div>

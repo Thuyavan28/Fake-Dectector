@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LightPillar from './LightPillar';
+import FloatingLines from './FloatingLines';
 
 const LOAD_MESSAGES = [
   'Initializing TruthGuard AI...',
@@ -137,46 +138,24 @@ export default function HeroPage({ onGetStarted }) {
         overflowX: 'hidden',
       }}
     >
-      {/* ── LightPillar Backgrounds ── */}
-      {/* Deep navy base */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: 'radial-gradient(ellipse at 50% 60%, #08102a 0%, #020510 60%, #000000 100%)' }} />
-
-      {/* Primary pillar — centred, blue→cyan */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 1, mixBlendMode: 'screen' }}>
-        <LightPillar
-          topColor="#2cff29"
-          bottomColor="#9ea5ff"
-          intensity={1}
-          rotationSpeed={0.3}
-          interactive={false}
-          glowAmount={0.002}
-          pillarWidth={3}
-          pillarHeight={0.4}
-          noiseIntensity={0.5}
-          pillarRotation={25}
-          mixBlendMode="screen"
-        />
-      </div>
-
-      {/* Secondary pillar — offset right, purple→electric-blue, lighter glow */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 2, mixBlendMode: 'screen' }}>
-        <LightPillar
-          topColor="#7c3aed"
-          bottomColor="#06b6d4"
-          intensity={0.7}
-          rotationSpeed={0.18}
-          interactive={false}
-          glowAmount={0.0015}
-          pillarWidth={2.2}
-          pillarHeight={0.35}
-          noiseIntensity={0.3}
-          pillarRotation={-20}
-          mixBlendMode="screen"
-        />
+      {/* ── FloatingLines Background ── */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: 'radial-gradient(ellipse at 50% 60%, #08102a 0%, #020510 60%, #000000 100%)' }}>
+        <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
+          <FloatingLines
+  linesGradient={["#0e1ce1","#2fbfc1","#4af547"]}
+  animationSpeed={2.0}
+  interactive
+  bendRadius={5}
+  bendStrength={-1.5}
+  mouseDamping={0.05}
+  parallax
+  parallaxStrength={0.3}
+/>
+        </div>
       </div>
 
       {/* Thin dark overlay — just enough to keep text sharp */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 3, background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.20) 45%, rgba(0,0,0,0.50) 100%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'fixed', inset: 0, zIndex: 3, background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.3) 45%, rgba(0,0,0,0.7) 100%)', pointerEvents: 'none' }} />
 
 
       {/* ── Loading overlay ── */}
@@ -219,7 +198,7 @@ export default function HeroPage({ onGetStarted }) {
 
           {/* Title lines */}
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.7 }}
-            style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 'clamp(48px, 8vw, 96px)', color: 'var(--text)', lineHeight: 0.95, letterSpacing: 5 }}>
+            style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 'clamp(48px, 8vw, 96px)', color: '#f8fafc', lineHeight: 0.95, letterSpacing: 5 }}>
             THE ULTIMATE
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.7 }}
@@ -227,7 +206,7 @@ export default function HeroPage({ onGetStarted }) {
             FAKE DETECTION
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65, duration: 0.7 }}
-            style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 'clamp(48px, 8vw, 96px)', color: 'var(--text)', lineHeight: 0.95, letterSpacing: 5, marginBottom: 30 }}>
+            style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 'clamp(48px, 8vw, 96px)', color: '#f8fafc', lineHeight: 0.95, letterSpacing: 5, marginBottom: 30 }}>
             PLATFORM
           </motion.div>
 
@@ -248,9 +227,9 @@ export default function HeroPage({ onGetStarted }) {
             ].map((s, i) => (
               <motion.div key={i}
                 whileHover={{ y: -4, boxShadow: `0 8px 30px ${s.accent}33` }}
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderTop: `2px solid ${s.accent}`, borderRadius: 14, padding: '18px 8px', textAlign: 'center', transition: 'all 0.25s', cursor: 'default' }}>
+                style={{ background: 'rgba(5, 10, 25, 0.7)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.15)', borderTop: `2px solid ${s.accent}`, borderRadius: 14, padding: '18px 8px', textAlign: 'center', transition: 'all 0.25s', cursor: 'default' }}>
                 <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 'clamp(28px, 4vw, 44px)', color: s.accent, lineHeight: 1 }}>{s.num}</div>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: '#475569', letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 6, lineHeight: 1.4, whiteSpace: 'pre-line' }}>{s.label}</div>
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: '#e2e8f0', letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 6, lineHeight: 1.4, whiteSpace: 'pre-line', textShadow: '0px 2px 4px rgba(0,0,0,0.7)' }}>{s.label}</div>
               </motion.div>
             ))}
           </motion.div>
@@ -270,7 +249,7 @@ export default function HeroPage({ onGetStarted }) {
                 <motion.span animate={{ x: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1.2 }} style={{ fontSize: 18 }}>→</motion.span>
               </motion.button>
             </div>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#475569', margin: 0 }}>No signup required · Completely free</p>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#cbd5e1', margin: 0, textShadow: '0px 1px 3px rgba(0,0,0,0.8)' }}>No signup required · Completely free</p>
           </motion.div>
 
           {/* ── Feature pills ── */}
@@ -279,8 +258,8 @@ export default function HeroPage({ onGetStarted }) {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
               {PILLS.map((pill, i) => (
                 <motion.div key={i}
-                  whileHover={{ y: -2, borderColor: 'rgba(37,99,235,0.4)', color: '#94a3b8' }}
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: '7px 16px', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#64748b', cursor: 'default', whiteSpace: 'nowrap', transition: 'all 0.2s' }}>
+                  whileHover={{ y: -2, borderColor: 'rgba(37,99,235,0.6)', color: '#ffffff', background: 'rgba(37,99,235,0.2)' }}
+                  style={{ background: 'rgba(5, 10, 25, 0.7)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, padding: '7px 16px', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#e2e8f0', cursor: 'default', whiteSpace: 'nowrap', transition: 'all 0.2s', textShadow: '0 1px 2px rgba(0,0,0,0.7)' }}>
                   {pill}
                 </motion.div>
               ))}
@@ -301,10 +280,10 @@ export default function HeroPage({ onGetStarted }) {
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#3b82f6', letterSpacing: 4, textTransform: 'uppercase', marginBottom: 12 }}>
               ✦ Built by
             </div>
-            <h2 style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 'clamp(32px, 5vw, 52px)', color: 'var(--text)', margin: 0, letterSpacing: 4 }}>
+            <h2 style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 'clamp(32px, 5vw, 52px)', color: '#f8fafc', margin: 0, letterSpacing: 4 }}>
               THE CREATORS
             </h2>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#475569', marginTop: 10, maxWidth: 420, lineHeight: 1.7 }}>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#cbd5e1', marginTop: 10, maxWidth: 420, lineHeight: 1.7 }}>
               This project was designed and developed by students passionate about AI &amp; cybersecurity.
             </p>
           </div>
@@ -315,7 +294,7 @@ export default function HeroPage({ onGetStarted }) {
               <motion.div key={i}
                 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2.0 + i * 0.15, duration: 0.6 }}
                 whileHover={{ y: -6, boxShadow: `0 16px 48px ${c.glow}` }}
-                style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid rgba(255,255,255,0.09)`, borderTop: `3px solid ${c.color}`, borderRadius: 20, padding: '32px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', transition: 'all 0.3s', cursor: 'default', backdropFilter: 'blur(12px)' }}>
+                style={{ background: 'rgba(5, 10, 25, 0.7)', border: `1px solid rgba(255,255,255,0.15)`, borderTop: `3px solid ${c.color}`, borderRadius: 20, padding: '32px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', transition: 'all 0.3s', cursor: 'default', backdropFilter: 'blur(12px)' }}>
 
                 {/* Avatar circle */}
                 <div style={{ position: 'relative', marginBottom: 20 }}>
@@ -327,7 +306,7 @@ export default function HeroPage({ onGetStarted }) {
                 </div>
 
                 {/* Name */}
-                <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 26, color: 'var(--text)', letterSpacing: 2, marginBottom: 4 }}>{c.name}</div>
+                <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 26, color: '#f8fafc', letterSpacing: 2, marginBottom: 4 }}>{c.name}</div>
 
                 {/* Role badge */}
                 <div style={{ background: `${c.color}18`, border: `1px solid ${c.color}44`, borderRadius: 20, padding: '4px 14px', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: c.color, letterSpacing: 1, marginBottom: 10 }}>
@@ -359,16 +338,16 @@ export default function HeroPage({ onGetStarted }) {
             <span style={{ fontSize: 22 }}>🏛️</span>
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#cbd5e1', fontWeight: 600 }}>University College of Engineering Kanchipuram (UCEK)</div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#64748b', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>Dept. of CSE · Academic Project · 2025–2026</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#64748b', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>Dept. of CSE · Academic Project · 2023–2027</div>
             </div>
           </motion.div>
 
           {/* Project tagline */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.6, duration: 0.6 }}
-            style={{ marginTop: 24, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#334155', letterSpacing: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ display: 'inline-block', width: 20, height: 1, background: '#334155' }} />
+            style={{ marginTop: 24, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#e2e8f0', letterSpacing: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ display: 'inline-block', width: 20, height: 1, background: '#e2e8f0' }} />
             Made with ❤️ for a safer digital world
-            <span style={{ display: 'inline-block', width: 20, height: 1, background: '#334155' }} />
+            <span style={{ display: 'inline-block', width: 20, height: 1, background: '#e2e8f0' }} />
           </motion.div>
         </motion.div>
 

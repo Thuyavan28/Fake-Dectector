@@ -442,27 +442,55 @@ export default function App() {
 
                       {/* ── NEWS ── */}
                       {activeModule === 'news' && (
-                        <textarea style={{ width:'100%', background:'var(--input-bg)', border:`1px solid var(--border)`, borderRadius:10, padding:15, color:'var(--text)', fontFamily:"'DM Sans', sans-serif", fontSize:14, minHeight:140, resize:'vertical', outline:'none', transition:'border-color 0.2s' }}
-                          placeholder="Enter news claim or post content..." value={newsText} onChange={e => setNewsText(e.target.value)}
-                          onFocus={e => e.target.style.borderColor='rgba(37,99,235,0.4)'} onBlur={e => e.target.style.borderColor='var(--border)'} />
+                        <div className="relative group">
+                          <textarea 
+                            style={{ width:'100%', background:'var(--input-bg)', border:`1px solid var(--border)`, borderRadius:12, padding:'20px 24px', color:'var(--text)', fontFamily:"'DM Sans', sans-serif", fontSize:15, lineHeight:1.6, minHeight:160, resize:'vertical', outline:'none', transition:'all 0.3s ease', boxShadow: 'inset 0 4px 20px rgba(0,0,0,0.2)' }}
+                            placeholder="Paste news article, claim, or social media post here for AI verification..." 
+                            value={newsText} onChange={e => setNewsText(e.target.value)}
+                            onFocus={e => { e.target.style.borderColor='#3b82f6'; e.target.style.boxShadow='0 0 0 4px rgba(59,130,246,0.1), inset 0 4px 20px rgba(0,0,0,0.2)'; e.target.style.background='rgba(37,99,235,0.02)'; }} 
+                            onBlur={e => { e.target.style.borderColor='var(--border)'; e.target.style.boxShadow='inset 0 4px 20px rgba(0,0,0,0.2)'; e.target.style.background='var(--input-bg)'; }} 
+                          />
+                          <div style={{ position:'absolute', top:12, right:16, fontFamily:"'JetBrains Mono', monospace", fontSize:10, color:'#64748b' }}>TEXT_ANALYSIS</div>
+                        </div>
                       )}
 
                       {/* ── JOB ── */}
                       {activeModule === 'job' && (
-                        <textarea style={{ width:'100%', background:'var(--input-bg)', border:`1px solid var(--border)`, borderRadius:10, padding:15, color:'var(--text)', fontFamily:"'DM Sans', sans-serif", fontSize:14, minHeight:140, resize:'vertical', outline:'none', transition:'border-color 0.2s' }}
-                          placeholder="Paste the full job posting..." value={jobText} onChange={e => setJobText(e.target.value)}
-                          onFocus={e => e.target.style.borderColor='rgba(37,99,235,0.4)'} onBlur={e => e.target.style.borderColor='var(--border)'} />
+                        <div className="relative group">
+                          <textarea 
+                            style={{ width:'100%', background:'var(--input-bg)', border:`1px solid var(--border)`, borderRadius:12, padding:'20px 24px', color:'var(--text)', fontFamily:"'DM Sans', sans-serif", fontSize:15, lineHeight:1.6, minHeight:160, resize:'vertical', outline:'none', transition:'all 0.3s ease', boxShadow: 'inset 0 4px 20px rgba(0,0,0,0.2)' }}
+                            placeholder="Paste the suspicious job description or email offer..." 
+                            value={jobText} onChange={e => setJobText(e.target.value)}
+                            onFocus={e => { e.target.style.borderColor='#8b5cf6'; e.target.style.boxShadow='0 0 0 4px rgba(139,92,246,0.1), inset 0 4px 20px rgba(0,0,0,0.2)'; e.target.style.background='rgba(139,92,246,0.02)'; }} 
+                            onBlur={e => { e.target.style.borderColor='var(--border)'; e.target.style.boxShadow='inset 0 4px 20px rgba(0,0,0,0.2)'; e.target.style.background='var(--input-bg)'; }} 
+                          />
+                          <div style={{ position:'absolute', top:12, right:16, fontFamily:"'JetBrains Mono', monospace", fontSize:10, color:'#64748b' }}>JOB_SCANNER</div>
+                        </div>
                       )}
 
                       {/* ── VOICE ── */}
                       {activeModule === 'voice' && (
                         <div onClick={() => audioInputRef.current.click()}
-                          style={{ border:`1px solid var(--border)`, borderRadius:10, padding:40, textAlign:'center', cursor:'pointer', background:'var(--input-bg)' }}
-                          onMouseEnter={e => e.currentTarget.style.background=isDark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.04)'}
-                          onMouseLeave={e => e.currentTarget.style.background='var(--input-bg)'}>
+                          style={{ border:`2px dashed rgba(6,182,212,0.3)`, borderRadius:16, padding:'50px 20px', textAlign:'center', cursor:'pointer', background:'var(--input-bg)', transition:'all 0.3s ease', position:'relative', overflow:'hidden' }}
+                          onMouseEnter={e => { e.currentTarget.style.background=isDark?'rgba(6,182,212,0.05)':'rgba(6,182,212,0.03)'; e.currentTarget.style.borderColor='#06b6d4'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background='var(--input-bg)'; e.currentTarget.style.borderColor='rgba(6,182,212,0.3)'; }}>
+                          
                           <input ref={audioInputRef} type="file" accept="audio/*" style={{ display:'none' }} onChange={e => setAudioFile(e.target.files[0])} />
-                          {audioFile ? <div style={{ color:'#22c55e', fontFamily:"'DM Sans', sans-serif", fontWeight:500 }}>✓ {audioFile.name} ({(audioFile.size/1024).toFixed(1)}KB)</div> : (
-                            <><div style={{ fontSize:32, marginBottom:12 }}>🎤</div><div style={{ color:'var(--text-muted)', fontFamily:"'DM Sans', sans-serif" }}>Click to upload audio snippet</div></>
+                          
+                          {audioFile ? (
+                            <motion.div initial={{ scale:0.9, opacity:0 }} animate={{ scale:1, opacity:1 }}>
+                              <div style={{ width:60, height:60, borderRadius:'50%', background:'rgba(34,197,94,0.1)', color:'#22c55e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, margin:'0 auto 16px' }}>✓</div>
+                              <div style={{ color:'#f1f5f9', fontFamily:"'DM Sans', sans-serif", fontWeight:600, fontSize:18 }}>{audioFile.name}</div>
+                              <div style={{ color:'#64748b', fontFamily:"'JetBrains Mono', monospace", fontSize:12, marginTop:6 }}>{(audioFile.size/1024).toFixed(1)} KB READY</div>
+                            </motion.div>
+                          ) : (
+                            <>
+                              <motion.div animate={{ y:[0,-10,0] }} transition={{ repeat:Infinity, duration:4, ease:'easeInOut' }} style={{ width:72, height:72, borderRadius:'50%', background:'rgba(6,182,212,0.1)', color:'#06b6d4', display:'flex', alignItems:'center', justifyContent:'center', fontSize:32, margin:'0 auto 20px' }}>
+                                🎤
+                              </motion.div>
+                              <div style={{ color:'#e2e8f0', fontFamily:"'DM Sans', sans-serif", fontSize:18, fontWeight:500, marginBottom:8 }}>Upload Audio Snippet</div>
+                              <div style={{ color:'#64748b', fontFamily:"'DM Sans', sans-serif", fontSize:14 }}>Drag & drop or <span style={{ color:'#06b6d4' }}>browse files</span> to verify voice authenticity</div>
+                            </>
                           )}
                         </div>
                       )}

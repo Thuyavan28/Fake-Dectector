@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import LoaderOverlay from './LoaderOverlay';
+import { playSuccessChime, playErrorBuzzer } from '../utils/audio';
 
 // ── Chart.js loader ────────────────────────────────────────────────────────────
 function useChartJs() {
@@ -51,13 +53,16 @@ function ConfidenceMeter({ value, color }) {
 function RadarChart({ data_points, color, loaded }) {
   const ref = useRef(null); const chartRef = useRef(null);
   useEffect(() => {
-    if (!loaded || !ref.current || !data_points?.labels?.length) return;
+    const labels = data_points?.labels || [];
+    const values = (data_points?.values || []).map(v => Number(v) || 0);
+
+    if (!loaded || !ref.current || !labels.length || !values.length) return;
     if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
     chartRef.current = new window.Chart(ref.current, {
       type: 'radar',
       data: {
-        labels: data_points.labels,
-        datasets: [{ data: data_points.values, backgroundColor: color + '33', borderColor: color, borderWidth: 2, pointBackgroundColor: color, pointRadius: 4 }]
+        labels: labels,
+        datasets: [{ data: values, backgroundColor: color + '33', borderColor: color, borderWidth: 2, pointBackgroundColor: color, pointRadius: 4 }]
       },
       options: { responsive:true, maintainAspectRatio:false, animation:{ duration:1400 },
         scales: { r: { beginAtZero:true, max:100, ticks:{ color:'#64748b', backdropColor:'transparent', stepSize:25, font:{size:10} }, grid:{ color:'rgba(255,255,255,0.07)' }, angleLines:{ color:'rgba(255,255,255,0.08)' }, pointLabels:{ color:'#94a3b8', font:{size:11, family:'DM Sans'} } } },
@@ -66,37 +71,47 @@ function RadarChart({ data_points, color, loaded }) {
     });
     return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
   }, [data_points, loaded, color]);
-  return <div style={{ height:220, position:'relative' }}><canvas ref={ref} /></div>;
+  return <div style={{ height:180, position:'relative' }}><canvas ref={ref} /></div>;
 }
 
 // ── Doughnut chart ─────────────────────────────────────────────────────────────
 function DoughnutChart({ data_points, color, loaded }) {
   const ref = useRef(null); const chartRef = useRef(null);
   useEffect(() => {
-    if (!loaded || !ref.current || !data_points?.labels?.length) return;
+    const labels = data_points?.labels || [];
+    const values = (data_points?.values || []).map(v => Number(v) || 0);
+
+    if (!loaded || !ref.current || !labels.length || !values.length) return;
     if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
-    const colors = data_points.values.map(v => scoreColor(v));
+    
+    // Ensure colors match values length
+    const colors = values.map(v => scoreColor(v));
+    
     chartRef.current = new window.Chart(ref.current, {
       type: 'doughnut',
-      data: { labels: data_points.labels, datasets: [{ data: data_points.values, backgroundColor: colors.map(c => c+'aa'), borderColor: colors, borderWidth:2 }] },
+      data: { labels: labels, datasets: [{ data: values, backgroundColor: colors.map(c => c+'aa'), borderColor: colors, borderWidth:2 }] },
       options: { responsive:true, maintainAspectRatio:false, animation:{ duration:1200 }, cutout:'65%',
-        plugins: { legend:{ position:'bottom', labels:{ color:'#94a3b8', font:{ family:'DM Sans', size:10 }, padding:10 } } } }
+        plugins: { legend:{ position:'bottom', labels:{ color:'#94a3b8', font:{ family:'DM Sans', size:10 }, padding:8 } } } }
     });
     return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
   }, [data_points, loaded, color]);
-  return <div style={{ height:200, position:'relative' }}><canvas ref={ref} /></div>;
+  return <div style={{ height:180, position:'relative' }}><canvas ref={ref} /></div>;
 }
 
 // ── Horizontal bar chart ───────────────────────────────────────────────────────
 function HBarChart({ data_points, loaded }) {
   const ref = useRef(null); const chartRef = useRef(null);
   useEffect(() => {
-    if (!loaded || !ref.current || !data_points?.labels?.length) return;
+    const labels = data_points?.labels || [];
+    const values = (data_points?.values || []).map(v => Number(v) || 0);
+
+    if (!loaded || !ref.current || !labels.length || !values.length) return;
     if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
-    const colors = data_points.values.map(v => scoreColor(v));
+    
+    const colors = values.map(v => scoreColor(v));
     chartRef.current = new window.Chart(ref.current, {
       type: 'bar',
-      data: { labels: data_points.labels, datasets: [{ data: data_points.values, backgroundColor: colors.map(c => c+'bb'), borderColor: colors, borderWidth:1, borderRadius:4 }] },
+      data: { labels: labels, datasets: [{ data: values, backgroundColor: colors.map(c => c+'bb'), borderColor: colors, borderWidth:1, borderRadius:4 }] },
       options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:{ duration:1200 },
         plugins: { legend:{ display:false } },
         scales: {
@@ -107,7 +122,7 @@ function HBarChart({ data_points, loaded }) {
     });
     return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
   }, [data_points, loaded]);
-  return <div style={{ height:200, position:'relative' }}><canvas ref={ref} /></div>;
+  return <div style={{ height:180, position:'relative' }}><canvas ref={ref} /></div>;
 }
 
 // ── Modal overlay styles ───────────────────────────────────────────────────────
@@ -115,10 +130,10 @@ const MODAL_STYLES = `
 @keyframes fadeInResearch { from { opacity:0 } to { opacity:1 } }
 @keyframes slideInResearch { from { transform:translate(-50%,-50%) scale(0.9); opacity:0 } to { transform:translate(-50%,-50%) scale(1); opacity:1 } }
 .research-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); backdrop-filter:blur(16px); z-index:1040; animation:fadeInResearch 0.3s ease; }
-.research-modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:1050; width:92%; max-width:900px; max-height:92vh; overflow-y:auto; border-radius:20px; padding:40px; animation:slideInResearch 0.4s ease; }
+.research-modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:1050; width:98%; max-width:1400px; max-height:96vh; overflow-y:auto; border-radius:20px; padding:40px; animation:slideInResearch 0.4s ease; }
 .research-modal::-webkit-scrollbar { width:6px; }
 .research-modal::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.18); border-radius:3px; }
-@media(max-width:640px) { .research-modal { padding:24px; } }
+@media(max-width:640px) { .research-modal { padding:20px; } }
 `;
 
 // ── Result Modal ───────────────────────────────────────────────────────────────
@@ -131,6 +146,14 @@ function ResearchResultModal({ result, onClose }) {
     { label:'EVIDENCE', value: result.evidence_score },
     { label:'PEER REVIEW', value: result.peer_review_likelihood },
   ];
+
+  useEffect(() => {
+    if (result && result.verdict === 'CREDIBLE') {
+      playSuccessChime();
+    } else if (result) {
+      playErrorBuzzer();
+    }
+  }, [result]);
 
   return createPortal(
     <>
@@ -300,6 +323,8 @@ export default function ResearchDetector() {
         <div style={{ width:8, height:8, borderRadius:'50%', background:'#22c55e', animation:'pulse 1s infinite' }} />
         {loading ? 'ANALYZING RESEARCH...' : '🔬 ANALYZE RESEARCH'}
       </motion.button>
+
+      {loading && <LoaderOverlay module="research" />}
 
       {/* Result modal */}
       {result && <ResearchResultModal result={result} onClose={() => { setResult(null); document.body.style.overflow='unset'; }} />}

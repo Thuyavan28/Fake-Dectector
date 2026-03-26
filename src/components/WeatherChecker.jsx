@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import LoaderOverlay from './LoaderOverlay';
+import { playSuccessChime, playErrorBuzzer } from '../utils/audio';
 
 // ── Chart.js loader ────────────────────────────────────────────────────────────
 function useChartJs() {
@@ -19,7 +21,7 @@ const WEATHER_TYPES = [
   { id:'Sunny', icon:'☀️' }, { id:'Rainy', icon:'🌧️' },
   { id:'Snowing', icon:'❄️' }, { id:'Thunderstorm', icon:'🌩️' },
   { id:'Foggy', icon:'🌫️' }, { id:'Windy', icon:'💨' },
-  { id:'Partly Cloudy', icon:'🌤️' }, { id:'Clear', icon:'🌈' },
+  { id:'Partly Cloudy', icon:'🌤️' }, { id:'Clear Night', icon:'🌙' },
 ];
 
 function verdictTheme(verdict) {
@@ -59,7 +61,7 @@ function GroupedBarChart({ result, loaded }) {
     });
     return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
   }, [loaded, result]);
-  return <div style={{ height:210, position:'relative' }}><canvas ref={ref} /></div>;
+  return <div style={{ height:180, position:'relative' }}><canvas ref={ref} /></div>;
 }
 
 function AccuracyDoughnut({ result, loaded }) {
@@ -78,7 +80,7 @@ function AccuracyDoughnut({ result, loaded }) {
     });
     return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
   }, [loaded, result]);
-  return <div style={{ height:210, position:'relative' }}><canvas ref={ref} /></div>;
+  return <div style={{ height:180, position:'relative' }}><canvas ref={ref} /></div>;
 }
 
 function AccuracyLineChart({ result, loaded }) {
@@ -101,7 +103,7 @@ function AccuracyLineChart({ result, loaded }) {
     });
     return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
   }, [loaded, result]);
-  return <div style={{ height:210, position:'relative' }}><canvas ref={ref} /></div>;
+  return <div style={{ height:180, position:'relative' }}><canvas ref={ref} /></div>;
 }
 
 // ── Diff badge ────────────────────────────────────────────────────────────────
@@ -117,9 +119,9 @@ const MODAL_CSS = `
 @keyframes wFadeIn { from{opacity:0} to{opacity:1} }
 @keyframes wSlideIn { from{transform:translate(-50%,-50%) scale(0.88);opacity:0} to{transform:translate(-50%,-50%) scale(1);opacity:1} }
 .weather-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);backdrop-filter:blur(16px);z-index:1040;animation:wFadeIn .3s ease;}
-.weather-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1050;width:92%;max-width:920px;max-height:92vh;overflow-y:auto;border-radius:20px;padding:40px;animation:wSlideIn .4s ease;}
+.weather-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1050;width:98%;max-width:1400px;max-height:96vh;overflow-y:auto;border-radius:20px;padding:40px;animation:wSlideIn .4s ease;}
 .weather-modal::-webkit-scrollbar{width:6px;}.weather-modal::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.18);border-radius:3px;}
-@media(max-width:640px){.weather-modal{padding:24px;}}
+@media(max-width:640px){.weather-modal{padding:20px;}}
 `;
 
 function WeatherResultModal({ result, onClose }) {
@@ -127,6 +129,14 @@ function WeatherResultModal({ result, onClose }) {
   const loaded = useChartJs();
   const act = result.actual;
   const prd = result.predicted;
+
+  useEffect(() => {
+    if (result && (result.verdict === 'CORRECT' || result.verdict === 'PARTIALLY_CORRECT')) {
+      playSuccessChime();
+    } else if (result) {
+      playErrorBuzzer();
+    }
+  }, [result]);
 
   return createPortal(
     <>
@@ -136,7 +146,7 @@ function WeatherResultModal({ result, onClose }) {
         <button onClick={onClose} style={{ position:'absolute', top:16, right:16, width:36, height:36, borderRadius:'50%', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.15)', color:'white', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
 
         {/* TOP HERO */}
-        <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'space-between', alignItems:'center', gap:20, marginBottom:28 }}>
+        <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'space-between', alignItems:'center', gap:20, marginBottom:22 }}>
           <div style={{ display:'flex', alignItems:'center', gap:16 }}>
             <img src={`https://openweathermap.org/img/wn/${act.icon}@2x.png`} alt={act.description} style={{ width:80, height:80, filter:'drop-shadow(0 0 16px rgba(255,255,255,0.3))' }} />
             <div>
@@ -152,89 +162,90 @@ function WeatherResultModal({ result, onClose }) {
           </div>
         </div>
 
-        {/* WEATHER DETAILS 2x3 */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px,1fr))', gap:12, marginBottom:24 }}>
-          {[
-            { icon:'🌡️', label:'Temperature', actual:`${act.temp}°C`, predicted:`${prd.tempMin}–${prd.tempMax}°C`, diff:<DiffBadge diff={Math.round(result.comparison.tempDiff*10)/10} unit="°C" /> },
-            { icon:'💧', label:'Humidity', actual:`${act.humidity}%`, predicted:`${prd.humidity}%`, diff:<DiffBadge diff={result.comparison.humidityDiff} unit="%" /> },
-            { icon:'💨', label:'Wind Speed', actual:`${act.windSpeed} km/h`, predicted:`${prd.wind} km/h`, diff:<DiffBadge diff={Math.round(result.comparison.windDiff*10)/10} unit=" km/h" /> },
-            { icon:'🌡️', label:'Feels Like', actual:`${act.feelsLike}°C`, predicted:'—', diff:null },
-            { icon:'🔵', label:'Pressure', actual:`${act.pressure} hPa`, predicted:'—', diff:null },
-            { icon:'👁️', label:'Visibility', actual:`${act.visibility} km`, predicted:'—', diff:null },
-          ].map((card,i) => (
-            <div key={i} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'14px 16px' }}>
-              <div style={{ fontSize:18, marginBottom:6 }}>{card.icon}</div>
-              <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:10, color:'#475569', letterSpacing:2, textTransform:'uppercase', marginBottom:8 }}>{card.label}</div>
-              <div style={{ fontFamily:"'DM Sans', sans-serif", fontSize:15, color:'#f1f5f9', fontWeight:600 }}>{card.actual}</div>
-              {card.predicted !== '—' && <div style={{ fontSize:12, color:'#64748b', marginTop:2 }}>Predicted: {card.predicted}</div>}
-              {card.diff && <div style={{ marginTop:4 }}>Diff: {card.diff}</div>}
-            </div>
-          ))}
-        </div>
-
-        {/* PREDICTION vs ACTUAL */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:24 }}>
-          <div style={{ background:'rgba(255,255,255,0.02)', border:`1px solid ${theme.color}44`, borderRadius:12, padding:'18px 20px' }}>
-            <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:11, color:theme.color, letterSpacing:2, textTransform:'uppercase', marginBottom:12 }}>YOUR PREDICTION</div>
-            <div style={{ fontSize:28, marginBottom:8 }}>{WEATHER_TYPES.find(w=>w.id===prd.weatherType)?.icon || '❓'}</div>
-            <div style={{ color:'#cbd5e1', fontFamily:"'DM Sans', sans-serif", fontSize:14 }}>{prd.weatherType}</div>
-            <div style={{ color:'#64748b', fontSize:12, marginTop:6 }}>Temp: {prd.tempMin}–{prd.tempMax}°C</div>
-            <div style={{ color:'#64748b', fontSize:12 }}>Humidity: {prd.humidity}% · Wind: {prd.wind} km/h</div>
-          </div>
-          <div style={{ background:'rgba(37,99,235,0.04)', border:'1px solid rgba(37,99,235,0.25)', borderRadius:12, padding:'18px 20px' }}>
-            <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:11, color:'#3b82f6', letterSpacing:2, textTransform:'uppercase', marginBottom:12 }}>ACTUAL WEATHER</div>
-            <img src={`https://openweathermap.org/img/wn/${act.icon}.png`} alt="" style={{ width:40, height:40, marginBottom:4 }} />
-            <div style={{ color:'#cbd5e1', fontFamily:"'DM Sans', sans-serif", fontSize:14, textTransform:'capitalize' }}>{act.description}</div>
-            <div style={{ color:'#64748b', fontSize:12, marginTop:6 }}>Temp: {act.temp}°C · Feels {act.feelsLike}°C</div>
-            <div style={{ color:'#64748b', fontSize:12 }}>Humidity: {act.humidity}% · Wind: {act.windSpeed} km/h</div>
-          </div>
-        </div>
-
-        {/* ACCURACY SCORES */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:24 }}>
-          {[
-            { k:'WEATHER TYPE', v:result.accuracy.weather },
-            { k:'TEMPERATURE', v:result.accuracy.temperature },
-            { k:'HUMIDITY', v:result.accuracy.humidity },
-            { k:'WIND SPEED', v:result.accuracy.wind },
-          ].map((box,i) => {
-            const sc = scoreColor(box.v);
-            return (
-              <div key={i} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderTop:`2px solid ${sc}`, borderRadius:12, padding:'14px', textAlign:'center' }}>
-                <div style={{ fontFamily:"'Bebas Neue', cursive", fontSize:36, color:sc, lineHeight:1 }}>{box.v}%</div>
-                <div style={{ fontFamily:"'DM Sans', sans-serif", fontSize:9, color:'#475569', letterSpacing:2, textTransform:'uppercase', marginTop:4 }}>{box.k}</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* PREDICTION vs ACTUAL */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <div style={{ background:'rgba(255,255,255,0.02)', border:`1px solid ${theme.color}44`, borderRadius:12, padding:'16px' }}>
+                <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:11, color:theme.color, letterSpacing:2, textTransform:'uppercase', marginBottom:8 }}>YOUR PREDICTION</div>
+                <div style={{ fontSize:28, marginBottom:6 }}>{WEATHER_TYPES.find(w=>w.id===prd.weatherType)?.icon || '❓'}</div>
+                <div style={{ color:'#cbd5e1', fontFamily:"'DM Sans', sans-serif", fontSize:14 }}>{prd.weatherType}</div>
+                <div style={{ color:'#64748b', fontSize:12, marginTop:4 }}>Temp: {prd.tempMin}–{prd.tempMax}°C</div>
+                <div style={{ color:'#64748b', fontSize:12 }}>Humidity: {prd.humidity}% · Wind: {prd.wind} km/h</div>
               </div>
-            );
-          })}
-        </div>
+              <div style={{ background:'rgba(37,99,235,0.04)', border:'1px solid rgba(37,99,235,0.25)', borderRadius:12, padding:'16px' }}>
+                <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:11, color:'#3b82f6', letterSpacing:2, textTransform:'uppercase', marginBottom:8 }}>ACTUAL WEATHER</div>
+                <img src={`https://openweathermap.org/img/wn/${act.icon}.png`} alt="" style={{ width:40, height:40, marginBottom:2 }} />
+                <div style={{ color:'#cbd5e1', fontFamily:"'DM Sans', sans-serif", fontSize:14, textTransform:'capitalize' }}>{act.description}</div>
+                <div style={{ color:'#64748b', fontSize:12, marginTop:4 }}>Temp: {act.temp}°C · Feels {act.feelsLike}°C</div>
+                <div style={{ color:'#64748b', fontSize:12 }}>Humidity: {act.humidity}% · Wind: {act.windSpeed} km/h</div>
+              </div>
+            </div>
 
-        {/* SUNRISE/SUNSET */}
-        <div style={{ display:'flex', gap:14, marginBottom:24 }}>
-          <div style={{ flex:1, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:'14px', textAlign:'center' }}>
-            <div style={{ fontSize:22 }}>🌅</div>
-            <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:11, color:'#475569', letterSpacing:2, textTransform:'uppercase' }}>Sunrise</div>
-            <div style={{ color:'#f59e0b', fontFamily:"'Bebas Neue', cursive", fontSize:22 }}>{formatTime(act.sunrise)}</div>
-          </div>
-          <div style={{ flex:1, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:'14px', textAlign:'center' }}>
-            <div style={{ fontSize:22 }}>🌇</div>
-            <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:11, color:'#475569', letterSpacing:2, textTransform:'uppercase' }}>Sunset</div>
-            <div style={{ color:'#f59e0b', fontFamily:"'Bebas Neue', cursive", fontSize:22 }}>{formatTime(act.sunset)}</div>
-          </div>
-        </div>
+            {/* ACCURACY SCORES */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10 }}>
+              {[
+                { k:'WEATHER', v:result.accuracy.weather },
+                { k:'TEMP', v:result.accuracy.temperature },
+                { k:'HUMIDITY', v:result.accuracy.humidity },
+                { k:'WIND', v:result.accuracy.wind },
+              ].map((box,i) => {
+                const sc = scoreColor(box.v);
+                return (
+                  <div key={i} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderTop:`2px solid ${sc}`, borderRadius:10, padding:'10px', textAlign:'center' }}>
+                    <div style={{ fontFamily:"'Bebas Neue', cursive", fontSize:28, color:sc, lineHeight:1 }}>{box.v}%</div>
+                    <div style={{ fontFamily:"'DM Sans', sans-serif", fontSize:9, color:'#475569', letterSpacing:1, textTransform:'uppercase', marginTop:4 }}>{box.k}</div>
+                  </div>
+                );
+              })}
+            </div>
 
-        {/* CHARTS */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:18 }}>
-          <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:20 }}>
-            <p style={{ fontFamily:"'Bebas Neue', cursive", fontSize:16, color:'#f1f5f9', margin:'0 0 14px', letterSpacing:1 }}>Predicted vs Actual</p>
-            <GroupedBarChart result={result} loaded={loaded} />
+            {/* SUNRISE/SUNSET */}
+            <div style={{ display:'flex', gap:10, flexGrow: 1 }}>
+              <div style={{ flex:1, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:10, padding:'20px 10px', textAlign:'center', display:'flex', flexDirection:'column', justifyContent:'center' }}>
+                <div style={{ fontSize:28, marginBottom: 8 }}>🌅</div>
+                <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:11, color:'#475569', letterSpacing:2, textTransform:'uppercase' }}>Sunrise</div>
+                <div style={{ color:'#f59e0b', fontFamily:"'Bebas Neue', cursive", fontSize:26 }}>{formatTime(act.sunrise)}</div>
+              </div>
+              <div style={{ flex:1, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:10, padding:'20px 10px', textAlign:'center', display:'flex', flexDirection:'column', justifyContent:'center' }}>
+                <div style={{ fontSize:28, marginBottom: 8 }}>🌇</div>
+                <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:11, color:'#475569', letterSpacing:2, textTransform:'uppercase' }}>Sunset</div>
+                <div style={{ color:'#f59e0b', fontFamily:"'Bebas Neue', cursive", fontSize:26 }}>{formatTime(act.sunset)}</div>
+              </div>
+            </div>
           </div>
-          <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:20 }}>
-            <p style={{ fontFamily:"'Bebas Neue', cursive", fontSize:16, color:'#f1f5f9', margin:'0 0 14px', letterSpacing:1 }}>Accuracy Breakdown</p>
-            <AccuracyDoughnut result={result} loaded={loaded} />
-          </div>
-          <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:20 }}>
-            <p style={{ fontFamily:"'Bebas Neue', cursive", fontSize:16, color:'#f1f5f9', margin:'0 0 14px', letterSpacing:1 }}>Accuracy by Metric</p>
-            <AccuracyLineChart result={result} loaded={loaded} />
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* WEATHER DETAILS 2x3 */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10 }}>
+              {[
+                { icon:'🌡️', label:'Temp', actual:`${act.temp}°C`, diff:<DiffBadge diff={Math.round(result.comparison.tempDiff*10)/10} unit="°C" /> },
+                { icon:'💧', label:'Humidity', actual:`${act.humidity}%`, diff:<DiffBadge diff={result.comparison.humidityDiff} unit="%" /> },
+                { icon:'💨', label:'Wind', actual:`${act.windSpeed} km/h`, diff:<DiffBadge diff={Math.round(result.comparison.windDiff*10)/10} unit="km" /> },
+                { icon:'🌡️', label:'Feels Like', actual:`${act.feelsLike}°C`, diff:null },
+                { icon:'🔵', label:'Pressure', actual:`${act.pressure} hPa`, diff:null },
+                { icon:'👁️', label:'Visibility', actual:`${act.visibility} km`, diff:null },
+              ].map((card,i) => (
+                <div key={i} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:'12px 14px' }}>
+                  <div style={{ fontSize:16, marginBottom:4 }}>{card.icon}</div>
+                  <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:10, color:'#475569', letterSpacing:1, textTransform:'uppercase', marginBottom:6 }}>{card.label}</div>
+                  <div style={{ fontFamily:"'DM Sans', sans-serif", fontSize:14, color:'#f1f5f9', fontWeight:600 }}>{card.actual}</div>
+                  {card.diff && <div style={{ marginTop:4 }}>Diff: {card.diff}</div>}
+                </div>
+              ))}
+            </div>
+
+            {/* CHARTS */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:10, padding:14 }}>
+                <p style={{ fontFamily:"'Bebas Neue', cursive", fontSize:14, color:'#f1f5f9', margin:'0 0 10px', letterSpacing:1 }}>Accuracy Breakdown</p>
+                <AccuracyDoughnut result={result} loaded={loaded} />
+              </div>
+              <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:10, padding:14 }}>
+                <p style={{ fontFamily:"'Bebas Neue', cursive", fontSize:14, color:'#f1f5f9', margin:'0 0 10px', letterSpacing:1 }}>Accuracy by Metric</p>
+                <AccuracyLineChart result={result} loaded={loaded} />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -350,6 +361,7 @@ export default function WeatherChecker() {
         {loading ? 'CHECKING WEATHER...' : '🌤️ CHECK MY PREDICTION'}
       </motion.button>
 
+      {loading && <LoaderOverlay module="weather" />}
       {result && <WeatherResultModal result={result} onClose={() => { setResult(null); document.body.style.overflow='unset'; }} />}
     </div>
   );

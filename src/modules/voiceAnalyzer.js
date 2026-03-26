@@ -77,7 +77,19 @@ Return ONLY JSON: {"verdict":"FAKE"|"REAL","confidence":0-100,"reasons":["plain 
   const parsed = JSON.parse(m ? m[0] : raw);
   parsed.confidence = normalizeConfidence(parsed.verdict, parsed.confidence);
   const fakeScore = parsed.verdict === 'FAKE' ? parsed.confidence : 100 - parsed.confidence;
-  return { ...parsed, fakeScore, realScore: 100 - fakeScore, engine: 'claude' };
+  
+  const data_points = {
+    labels: ['Silence Ratio', 'Energy Variance', 'Peak Volume', 'ZCR', 'Duration Naturalness'],
+    values: [
+      parseFloat(features.silenceRatio) > 0.32 ? 20 : 80,
+      parseFloat(features.energyVariance) < 0.0003 ? 15 : 85,
+      parseFloat(features.rms) < 0.015 ? 30 : 90,
+      (parseFloat(features.zcr) < 0.01 || parseFloat(features.zcr) > 0.6) ? 25 : 85,
+      features.duration < 3 ? 10 : 90
+    ]
+  };
+
+  return { ...parsed, fakeScore, realScore: 100 - fakeScore, engine: 'claude', data_points };
 }
 
 function ruleBasedVoice(features, fileName) {
@@ -127,6 +139,17 @@ function ruleBasedVoice(features, fileName) {
   const confidence = normalizeConfidence(verdict, Math.min(99, rawScore));
   const fakeScore = verdict === 'FAKE' ? confidence : 100 - confidence;
 
+  const data_points = {
+    labels: ['Silence Ratio', 'Energy Variance', 'Peak Volume', 'ZCR', 'Duration Naturalness'],
+    values: [
+      parseFloat(silenceRatio) > 0.32 ? 20 : 80,
+      parseFloat(energyVariance) < 0.0003 ? 15 : 85,
+      parseFloat(rms) < 0.015 ? 30 : 90,
+      (parseFloat(zcr) < 0.01 || parseFloat(zcr) > 0.6) ? 25 : 85,
+      duration < 3 ? 10 : 90
+    ]
+  };
+
   return {
     verdict,
     confidence,
@@ -138,6 +161,7 @@ function ruleBasedVoice(features, fileName) {
       ? `${flags.length} deepfake signals detected — this voice recording appears synthetic.`
       : `No deepfake indicators found — this recording appears to be a genuine human voice.`,
     engine: 'web-audio',
+    data_points
   };
 }
 

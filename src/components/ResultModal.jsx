@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiInfo, FiCheckCircle, FiCopy } from 'react-icons/fi';
+import { playSuccessChime, playErrorBuzzer } from '../utils/audio';
 
 // ── Animated confidence circle ────────────────────────────────────────────────
 function CircularConfidence({ value, color }) {
@@ -51,8 +52,10 @@ export default function ResultModal({ result, onClose }) {
   const [chartJsLoaded, setChartJsLoaded] = useState(false);
   const pieCanvasRef = useRef(null);
   const barCanvasRef = useRef(null);
+  const lineCanvasRef = useRef(null);
   const pieChartRef = useRef(null);
   const barChartRef = useRef(null);
+  const lineChartRef = useRef(null);
 
   // Load Chart.js
   useEffect(() => {
@@ -66,15 +69,32 @@ export default function ResultModal({ result, onClose }) {
     document.head.appendChild(script);
   }, []);
 
+  // Play result sound on mount
+  useEffect(() => {
+    if (result && result.verdict === 'FAKE') {
+      playErrorBuzzer();
+    } else {
+      playSuccessChime();
+    }
+  }, [result]);
+
   // Render charts
   useEffect(() => {
     if (!result || !result.data_points || !window.Chart || !chartJsLoaded) return;
-    if (!result.data_points.labels || !result.data_points.labels.length) return;
-    if (result.data_points.labels.length !== result.data_points.values.length) return;
+    
+    // Normalize data
+    const labels = result.data_points.labels || [];
+    const values = (result.data_points.values || []).map(v => {
+      if (typeof v === 'number') return v;
+      return parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0;
+    });
+
+    if (!labels.length || !values.length) return;
 
     // Destroy old instances
     if (pieChartRef.current) pieChartRef.current.destroy();
     if (barChartRef.current) barChartRef.current.destroy();
+    if (lineChartRef.current) lineChartRef.current.destroy();
 
     const colors = result.verdict === 'FAKE'
       ? ['#ef4444','#dc2626','#b91c1c','#991b1b','#7f1d1d']
@@ -85,9 +105,9 @@ export default function ResultModal({ result, onClose }) {
       pieChartRef.current = new window.Chart(pieCanvasRef.current, {
         type: 'doughnut',
         data: {
-          labels: result.data_points.labels,
+          labels: labels,
           datasets: [{
-            data: result.data_points.values,
+            data: values,
             backgroundColor: colors,
             borderColor: '#0f1318',
             borderWidth: 3
@@ -117,9 +137,9 @@ export default function ResultModal({ result, onClose }) {
       barChartRef.current = new window.Chart(barCanvasRef.current, {
         type: 'bar',
         data: {
-          labels: result.data_points.labels,
+          labels: labels,
           datasets: [{
-            data: result.data_points.values,
+            data: values,
             backgroundColor: result.verdict === 'FAKE'
               ? 'rgba(239,68,68,0.7)' : 'rgba(34,197,94,0.7)',
             borderColor: result.verdict === 'FAKE' ? '#ef4444' : '#22c55e',
@@ -146,9 +166,47 @@ export default function ResultModal({ result, onClose }) {
       });
     }
 
+    // LINE
+    if (lineCanvasRef.current) {
+      lineChartRef.current = new window.Chart(lineCanvasRef.current, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: values,
+            borderColor: result.verdict === 'FAKE' ? '#ef4444' : '#22c55e',
+            backgroundColor: result.verdict === 'FAKE' ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: result.verdict === 'FAKE' ? '#ef4444' : '#22c55e',
+            pointRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 1300 },
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              ticks: { color: '#64748b', font: { size: 11 } },
+              grid: { color: 'rgba(255,255,255,0.04)' }
+            },
+            y: {
+              min: 0,
+              max: 100,
+              ticks: { color: '#64748b' },
+              grid: { color: 'rgba(255,255,255,0.04)' }
+            }
+          }
+        }
+      });
+    }
+
     return () => {
       if (pieChartRef.current) pieChartRef.current.destroy();
       if (barChartRef.current) barChartRef.current.destroy();
+      if (lineChartRef.current) lineChartRef.current.destroy();
     }
   }, [result, chartJsLoaded]);
 
@@ -200,7 +258,7 @@ export default function ResultModal({ result, onClose }) {
         onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       >
         <motion.div
-          className={`relative w-full my-auto transition-all duration-300 ${showCharts ? 'max-w-[1000px]' : (isFake || expanded ? 'max-w-4xl' : 'max-w-2xl')}`}
+          className="relative w-[98%] max-w-[1400px] my-auto transition-all duration-300"
           style={{
             background: 'linear-gradient(160deg, #090e17, #03050a)',
             borderRadius: 24,
@@ -272,100 +330,109 @@ export default function ResultModal({ result, onClose }) {
             </div>
 
             {/* Layout Body */}
-            <div className="px-8 pb-8 flex flex-col md:flex-row gap-8">
+            <div className="px-8 pb-8 flex flex-col gap-8">
               
-              {/* Left Column (Input & Explanation) */}
-              <div className="flex-1 space-y-6">
+              {/* Top Row: Input, Explanation & Confidence */}
+              <div className="flex flex-col md:flex-row gap-8">
                 
-                {/* Input Text */}
-                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-[3px] font-mono mb-2">Analyzed Content</p>
-                  <div className="p-5 rounded-2xl italic text-lg leading-relaxed shadow-inner border"
-                    style={{ 
-                      background: isFake ? 'rgba(239,68,68,0.02)' : 'rgba(255,255,255,0.02)', 
-                      borderColor: isFake ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.05)',
-                      color: isFake ? '#fca5a5' : '#e2e8f0'
-                    }}>
-                    "{inputText}"
-                  </div>
-                </motion.div>
-
-                {/* Explanation */}
-                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-[3px] font-mono mb-2 flex items-center gap-2">
-                    <FiInfo /> AI Reasoning
-                  </p>
-                  <div className="p-5 rounded-2xl text-[15px] leading-relaxed border"
-                    style={{ background: '#0a0f1a', borderColor: 'rgba(255,255,255,0.05)', color: '#cbd5e1', whiteSpace: 'pre-wrap' }}>
-                    {explanation}
-                  </div>
-                </motion.div>
-
-                {/* Corrected Fact (FAKE ONLY) */}
-                {isFake && correctedFact && (
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }}>
-                    <div className="p-5 rounded-2xl relative overflow-hidden"
-                      style={{ background: 'rgba(34, 197, 94, 0.05)', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
-                      <div className="absolute top-0 left-0 w-1 h-full" style={{ background: '#22c55e' }} />
-                      <p className="text-xs uppercase tracking-[2px] font-mono mb-2 flex items-center gap-2" style={{ color: '#22c55e' }}>
-                        <FiCheckCircle size={14} /> ✔ Correct Information
-                      </p>
-                      <p className="text-base leading-relaxed font-medium" style={{ color: '#ecfdf5' }}>
-                        {correctedFact}
-                      </p>
+                {/* Left Column (Input & Explanation) */}
+                <div className="flex-1 space-y-6">
+                  
+                  {/* Input Text */}
+                  <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-[3px] font-mono mb-2">Analyzed Content</p>
+                    <div className="p-5 rounded-2xl italic text-lg leading-relaxed shadow-inner border"
+                      style={{ 
+                        background: isFake ? 'rgba(239,68,68,0.02)' : 'rgba(255,255,255,0.02)', 
+                        borderColor: isFake ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.05)',
+                        color: isFake ? '#fca5a5' : '#e2e8f0'
+                      }}>
+                      "{inputText}"
                     </div>
                   </motion.div>
-                )}
 
-              </div>
-
-              {/* Right Column (Confidence & Chart Placeholder) */}
-              <div className="w-full md:w-[320px] lg:w-[380px] flex-shrink-0 flex flex-col">
-                
-                {/* Confidence Circle */}
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
-                  className="p-8 rounded-3xl border glass-elevated flex flex-col items-center justify-center relative overflow-hidden flex-1"
-                  style={{ background: '#0a0f1a', borderColor: 'rgba(255,255,255,0.05)' }}
-                >
-                  <div className="absolute inset-0 opacity-5" style={{ background: `radial-gradient(circle at center, ${COLOR}, transparent 70%)` }} />
-                  <CircularConfidence value={confidence} color={COLOR} />
-                </motion.div>
-              </div>
-            </div>
-
-            {/* Charts Section */}
-            {showCharts && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}
-                className="px-8 pb-8"
-              >
-                <div style={{ padding: '24px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                    gap: '20px',
-                  }}>
-                    <div style={{ background: '#0f1318', borderRadius: '16px', padding: '24px' }}>
-                      <p style={{ color: '#f1f5f9', fontFamily: 'Bebas Neue', fontSize: '18px', letterSpacing: '1px', marginBottom: '16px' }}>
-                        Data Breakdown
-                      </p>
-                      <div style={{ position: 'relative', height: '240px', width: '100%' }}>
-                        <canvas ref={pieCanvasRef} />
-                      </div>
+                  {/* Explanation */}
+                  <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-[3px] font-mono mb-2 flex items-center gap-2">
+                      <FiInfo /> AI Reasoning
+                    </p>
+                    <div className="p-5 rounded-2xl text-[15px] leading-relaxed border"
+                      style={{ background: '#0a0f1a', borderColor: 'rgba(255,255,255,0.05)', color: '#cbd5e1', whiteSpace: 'pre-wrap' }}>
+                      {explanation}
                     </div>
-                    <div style={{ background: '#0f1318', borderRadius: '16px', padding: '24px' }}>
-                      <p style={{ color: '#f1f5f9', fontFamily: 'Bebas Neue', fontSize: '18px', letterSpacing: '1px', marginBottom: '16px' }}>
-                        Comparison Chart
-                      </p>
-                      <div style={{ position: 'relative', height: '240px', width: '100%' }}>
-                        <canvas ref={barCanvasRef} />
+                  </motion.div>
+
+                  {/* Corrected Fact (FAKE ONLY) */}
+                  {isFake && correctedFact && (
+                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }}>
+                      <div className="p-5 rounded-2xl relative overflow-hidden"
+                        style={{ background: 'rgba(34, 197, 94, 0.05)', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                        <div className="absolute top-0 left-0 w-1 h-full" style={{ background: '#22c55e' }} />
+                        <p className="text-xs uppercase tracking-[2px] font-mono mb-2 flex items-center gap-2" style={{ color: '#22c55e' }}>
+                          <FiCheckCircle size={14} /> ✔ Correct Information
+                        </p>
+                        <p className="text-base leading-relaxed font-medium" style={{ color: '#ecfdf5' }}>
+                          {correctedFact}
+                        </p>
                       </div>
+                    </motion.div>
+                  )}
+
+                </div>
+
+                {/* Right Column (Confidence) */}
+                <div className="w-full md:w-[350px] lg:w-[400px] flex-shrink-0 flex flex-col gap-6">
+                  
+                  {/* Confidence Circle */}
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
+                    className="p-8 rounded-3xl border glass-elevated flex flex-col items-center justify-center relative overflow-hidden h-full"
+                    style={{ background: '#0a0f1a', borderColor: 'rgba(255,255,255,0.05)' }}
+                  >
+                    <div className="absolute inset-0 opacity-5" style={{ background: `radial-gradient(circle at center, ${COLOR}, transparent 70%)` }} />
+                    <CircularConfidence value={confidence} color={COLOR} />
+                  </motion.div>
+
+                </div>
+              </div>
+
+              {/* Bottom Row: Charts Grid */}
+              {showCharts && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+                  className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full"
+                >
+                  <div style={{ background: '#0a0f1a', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '24px', padding: '24px' }}>
+                    <p className="text-[#f1f5f9] font-['Bebas_Neue'] text-lg tracking-widest mb-4 uppercase">
+                      Accuracy by Metric
+                    </p>
+                    <div className="relative h-[220px] w-full">
+                      <canvas ref={lineCanvasRef} />
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            )}
+
+                  <div style={{ background: '#0a0f1a', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '24px', padding: '24px' }}>
+                    <p className="text-[#f1f5f9] font-['Bebas_Neue'] text-lg tracking-widest mb-4 uppercase">
+                      Data Breakdown
+                    </p>
+                    <div className="relative h-[220px] w-full">
+                      <canvas ref={pieCanvasRef} />
+                    </div>
+                  </div>
+
+                  <div style={{ background: '#0a0f1a', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '24px', padding: '24px' }}>
+                    <p className="text-[#f1f5f9] font-['Bebas_Neue'] text-lg tracking-widest mb-4 uppercase">
+                      Comparison Metrics
+                    </p>
+                    <div className="relative h-[220px] w-full">
+                      <canvas ref={barCanvasRef} />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+
 
           </div>
         </motion.div>
