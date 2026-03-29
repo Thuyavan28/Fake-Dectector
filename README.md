@@ -23,6 +23,12 @@
 
 ---
 
+## 🎥 Demo Video
+
+👉 [Watch Demo](https://drive.google.com/file/d/1sGNdWI5lcVmBTA6u5bx9k9ct7RX4ZFk8/view?t=7s)
+
+---
+
 ## 🚀 Key Detection Modules
 
 TruthGuard AI features 7 specialized engines to ensure digital integrity:
