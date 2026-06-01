@@ -8,19 +8,21 @@ const PORT = process.env.PORT || 3000;
 
 // CORS configuration — restrict origins in production
 const allowedOrigins = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(',').map(u => u.trim())
+  ? process.env.FRONTEND_URL.split(',').map(u => u.trim().replace(/\/$/, ''))
   : ['http://localhost:5174', 'http://localhost:5173'];
 
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
+    // Strip trailing slash for consistent matching
+    const cleanOrigin = origin.replace(/\/$/, '');
     // Allow if in allowedOrigins OR during local development (no NODE_ENV or 'development')
-    if (allowedOrigins.includes(origin) || !process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+    if (allowedOrigins.includes(cleanOrigin) || !process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
       return callback(null, true);
     }
-    console.warn(`⚠️ Blocked by CORS: Origin ${origin} not in allowedOrigins`);
-    return callback(new Error('Not allowed by CORS'));
+    console.warn(`⚠️ Blocked by CORS: Origin ${origin} not in allowedOrigins:`, allowedOrigins);
+    return callback(null, false); // Reject cleanly without throwing a 500 server error
   },
   credentials: true
 };
