@@ -14,9 +14,17 @@
 
 ---
 
+## 🌐 Live Application
+🚀 **Try the Deployed App Live:** [https://fake-dectector-frontend.vercel.app/](https://fake-dectector-frontend.vercel.app/)
+
+*   **Frontend Deployed on:** [Vercel](https://vercel.com/)
+*   **Backend Deployed on:** [Render](https://render.com/)
+
+---
+
 ## 🌟 Overview
 
-**TruthGuard AI** is a cutting-edge forensic analysis platform designed to combat the rising tide of digital misinformation and AI-generated deception. Leveraging **Google's Gemini 2.5 Flash** and advanced behavioral biometrics, TruthGuard provides a centralized suite for verifying everything from viral news and deepfake audio to fraudulent job postings and scientific research.
+**TruthGuard AI** is a cutting-edge forensic analysis platform designed to combat the rising tide of digital misinformation and AI-generated deception. Leveraged on a fully decoupled **Frontend / Backend Architecture** and powered by **Google's Gemini 3.5 Flash** with real-time Google Search grounding, TruthGuard provides a centralized suite for verifying everything from viral news and deepfake audio to fraudulent job postings and scientific research.
 
 > [!IMPORTANT]
 > This project is designed for researchers, fact-checkers, and everyday users who need reliable, AI-powered verification in a world increasingly filled with synthetic content.
@@ -55,24 +63,31 @@ TruthGuard AI features 7 specialized engines to ensure digital integrity:
 
 ---
 
-## 🛠️ Technology Stack
+## 🛠️ Technology Stack & Architecture
+
+### **📁 Decoupled Folder Structure**
+```bash
+Fake-Dectector/
+├── frontend/        # React 18, Vite, Tailwind CSS, Three.js, Chart.js (Hosted on Vercel)
+└── backend/         # Node.js, Express.js, Google Gemini 3.5 SDK, CORS (Hosted on Render)
+```
 
 ### **Frontend**
 - **Framework**: React 18 (Hooks, Context, Web Audio API)
 - **Styling**: Tailwind CSS & Framer Motion
-- **Visuals**: Three.js (Background System), Chart.js (Forensics)
-- **Components**: Lucide-React & Custom SVG Animations
+- **Visuals**: Three.js (Dynamic Neural Background System), Chart.js (Forensics breakdowns)
+- **Components**: Lucide-React & Custom Premium SVG Animations
 
 ### **Backend**
 - **Runtime**: Node.js & Express.js
-- **AI Core**: Google Gemini 1.5/2.5 Pro & Flash
-- **APIs**: OpenWeatherMap API, Axios Integration
+- **AI Core**: Google Gemini 3.5 Flash & 3.1 Flash-lite (Rotated Key Chains)
+- **APIs**: Real-time Google Search Grounding API, OpenWeatherMap API
 
 ---
 
-## ⚙️ Setup & Installation
+## ⚙️ Setup & Installation (Local Development)
 
-Follow these steps to get your own instance of TruthGuard AI running locally:
+Follow these steps to run the decoupled TruthGuard AI architecture locally:
 
 ### 1. Clone the Repository
 ```bash
@@ -80,25 +95,33 @@ git clone https://github.com/Thuyavan28/Fake-Dectector.git
 cd Fake-Dectector
 ```
 
-### 2. Install Dependencies
-This project uses `concurrently` to manage both the React frontend and Express backend.
+### 2. Configure Backend Environment
+Navigate into the `backend/` folder, install dependencies, and create your `.env` file:
 ```bash
+cd backend
 npm install
 ```
-
-### 3. Configure Environment Variables
-Create a `.env` file in the root directory:
+Create a `backend/.env` file:
 ```env
-GEMINI_API_KEY=your_google_gemini_api_key
+GEMINI_API_KEY_1=your_google_gemini_api_key_1
+GEMINI_API_KEY_2=your_google_gemini_api_key_2 (optional backup)
+GEMINI_API_KEY_3=your_google_gemini_api_key_3 (optional backup)
 OPENWEATHER_API_KEY=your_openweather_api_key
-PORT=5000
+PORT=3000
 ```
-
-### 4. Launch Development Server
+Start the backend development server:
 ```bash
 npm run dev
 ```
-The application will be available at `http://localhost:5173`.
+
+### 3. Configure Frontend Environment
+In a new terminal window, navigate to the `frontend/` folder, install dependencies, and run:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+The frontend will run at `http://localhost:5174` (or `5173`) and automatically proxy all API requests to `http://localhost:3000` via Vite!
 
 ---
 
