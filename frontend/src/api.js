@@ -1,5 +1,7 @@
+import API_BASE from './config';
+
 export async function analyzeText(text) {
-  const response = await fetch('/api/analyze', {
+  const response = await fetch(`${API_BASE}/api/analyze`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -24,7 +26,7 @@ export async function analyzeText(text) {
 }
 
 export async function checkHealth() {
-  const response = await fetch('/health');
+  const response = await fetch(`${API_BASE}/health`);
   
   if (!response.ok) {
     throw new Error(`Health check failed! status: ${response.status}`);

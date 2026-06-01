@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import LoaderOverlay from './LoaderOverlay';
 import { playSuccessChime, playErrorBuzzer } from '../utils/audio';
+import API_BASE from '../config';
 
 // ── Chart.js loader ────────────────────────────────────────────────────────────
 function useChartJs() {
@@ -262,7 +263,7 @@ export default function ResearchDetector() {
     if (!content) return;
     setLoading(true); setError(null); setResult(null);
     try {
-      const res = await fetch('/api/analyze/research', {
+      const res = await fetch(`${API_BASE}/api/analyze/research`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ text: text.trim(), url: url.trim() })
       });

@@ -1,12 +1,14 @@
 // ─── jobChecker.js ────────────────────────────────────────────────────────────
 // Now powered by Google Gemini API via Express backend (/api/analyze)
 
+import API_BASE from '../config';
+
 export async function analyzeJob(text) {
   if (!text || !text.trim()) {
     throw new Error('No text provided for analysis.');
   }
 
-  const response = await fetch('/api/analyze', {
+  const response = await fetch(`${API_BASE}/api/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text: "Job Posting Analysis: " + text.trim() }),

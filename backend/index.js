@@ -6,17 +6,37 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// CORS configuration — restrict origins in production
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map(u => u.trim())
+  : ['http://localhost:5174', 'http://localhost:5173'];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    // Allow if in allowedOrigins OR during local development (no NODE_ENV or 'development')
+    if (allowedOrigins.includes(origin) || !process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    console.warn(`⚠️ Blocked by CORS: Origin ${origin} not in allowedOrigins`);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// ─── API Key Rotation ─────────────────────────────────────────────────────────
+// ─── API Key Rotation + Model Fallback ────────────────────────────────────────
 const API_KEYS = [
   process.env.GEMINI_API_KEY_1,
   process.env.GEMINI_API_KEY_2,
   process.env.GEMINI_API_KEY_3,
 ].filter(Boolean);
-const MODEL = 'gemini-2.5-flash';
+
+// Model fallback chain: best → reliable
+const MODELS = ['gemini-3.5-flash', 'gemini-3.1-flash-lite'];
+const MODEL = MODELS[0]; // Primary model (shown in logs/health)
 
 /**
  * Robustly converts any input to a 0-100 integer.
@@ -29,49 +49,97 @@ function toSafeNum(val, fallback = 50) {
   return isNaN(num) ? fallback : Math.max(0, Math.min(100, num));
 }
 
-function geminiUrl(key) {
-  return `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
+function geminiUrl(model, key) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
 }
 
-// Try each API key in order until one succeeds (not 429/400/expired)
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Try each API key with retry + model fallback + grounding fallback
 async function callGeminiWithKeyRotation(body) {
   let lastError = null;
+  let triedWithoutGrounding = false;
+  const hasGrounding = Array.isArray(body.tools) && body.tools.some(t => t.google_search);
 
-  for (let i = 0; i < API_KEYS.length; i++) {
-    const key = API_KEYS[i];
-    console.log(`🔑 Trying API key ${i + 1}/${API_KEYS.length}...`);
+  for (const model of MODELS) {
+    console.log(`🤖 Trying model: ${model}`);
 
-    try {
-      const res = await fetch(geminiUrl(key), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
+    for (let i = 0; i < API_KEYS.length; i++) {
+      const key = API_KEYS[i];
+      console.log(`🔑 Trying API key ${i + 1}/${API_KEYS.length}...`);
 
-      if (res.ok) {
-        console.log(`✅ Key ${i + 1} succeeded.`);
-        return { res, ok: true };
+      // Retry once on 503 with a short backoff
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await fetch(geminiUrl(model, key), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+
+          if (res.ok) {
+            console.log(`✅ Key ${i + 1} succeeded on ${model}${attempt > 0 ? ' (retry)' : ''}.`);
+            return { res, ok: true, model, grounded: hasGrounding && !triedWithoutGrounding };
+          }
+
+          const status = res.status;
+          const errText = await res.text();
+
+          // Retry on 503 (overloaded) once with backoff
+          if (status === 503 && attempt === 0) {
+            console.log(`⏳ Key ${i + 1} got 503 on ${model} — retrying in 1.5s...`);
+            await sleep(1500);
+            continue;
+          }
+
+          // On 429 with grounding enabled: strip grounding and retry ALL keys/models
+          if (status === 429 && hasGrounding && !triedWithoutGrounding) {
+            console.log(`⚠️  Key ${i + 1} got 429 — stripping Google Search grounding and retrying...`);
+            triedWithoutGrounding = true;
+            // Remove grounding tools from body
+            body = { ...body };
+            delete body.tools;
+            // Reset loops: restart from first model, first key
+            i = -1; // will become 0 after for-loop increment
+            break;
+          }
+
+          // Skip expired/invalid keys entirely (don't retry, don't try other models)
+          if (status === 400) {
+            console.log(`⚠️  Key ${i + 1} invalid/expired (${errText.substring(0, 80)}) — skipping key.`);
+            lastError = { status, errText };
+            break;
+          }
+
+          console.log(`⚠️  Key ${i + 1} failed (${status}: ${errText.substring(0, 100)}) — trying next key...`);
+          lastError = { status, errText };
+          break; // Move to next key
+
+        } catch (err) {
+          console.log(`⚠️  Key ${i + 1} threw error: ${err.message} — trying next key...`);
+          lastError = { status: 500, errText: err.message };
+          break;
+        }
       }
+    }
 
-      const status = res.status;
-      const errText = await res.text();
-
-      console.log(`⚠️  Key ${i + 1} failed (${status}: ${errText.substring(0, 100)}) — trying next key...`);
-      lastError = { status, errText };
+    // If we just stripped grounding, restart the model loop
+    if (triedWithoutGrounding && model === MODELS[0]) {
+      console.log(`🔄 Retrying all models WITHOUT grounding...`);
       continue;
+    }
 
-    } catch (err) {
-      console.log(`⚠️  Key ${i + 1} threw error: ${err.message} — trying next key...`);
-      lastError = { status: 500, errText: err.message };
-      continue;
+    // If we're here, all keys failed for this model — try next model
+    if (MODELS.indexOf(model) < MODELS.length - 1) {
+      console.log(`🔄 All keys failed on ${model} — falling back to next model...`);
     }
   }
 
-  // All keys exhausted
+  // All models + keys exhausted
   return {
     ok: false,
-    status: 429,
-    errText: lastError?.errText || 'All API keys exhausted. Please try again in a few minutes.'
+    status: lastError?.status || 429,
+    errText: lastError?.errText || 'All API keys and models exhausted. Please try again in a few minutes.'
   };
 }
 
@@ -134,7 +202,9 @@ app.post('/api/analyze', async (req, res) => {
   }
 
   const PROMPT = `[ SYSTEM DIRECTIVE: FORENSIC INTELLIGENCE ANALYST ]
-You are a highly advanced forensic fact-checker and AI pattern recognition system. 
+You are a highly advanced forensic fact-checker and AI pattern recognition system.
+IMPORTANT: You have access to Google Search. USE IT to verify any factual claims, events, dates, scores, winners, statistics, or real-world assertions in the text BEFORE making your judgment. Do NOT rely solely on your training data — always ground your analysis in real-time search results.
+
 You are performing a deep-layer analysis on the following text to detect:
 1. FALSE INFORMATION / FAKE NEWS (unverified claims, lack of citations, sensationalism).
 2. AI-GENERATED FOOTPRINTS (repetitive syntax, uniform sentence lengths, LLM-specific transition phrases, lack of burstiness/perplexity).
@@ -142,7 +212,7 @@ You are performing a deep-layer analysis on the following text to detect:
 
 Analyze using the following 5 dimensions internally:
 A) Linguistic Fingerprint
-B) Factual Grounding
+B) Factual Grounding (USE SEARCH RESULTS to verify claims!)
 C) Emotional Manipulation
 D) Source Authenticity
 E) Logical Consistency
@@ -161,14 +231,17 @@ Return ONLY extremely strict, valid JSON. No markdown fences.
   }
 }`;
 
+  const currentDateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
   const body = {
-    contents: [{ parts: [{ text: PROMPT + '\n\n--- TARGET TEXT FOR ANALYSIS ---\n' + text.trim() }] }],
+    contents: [{ parts: [{ text: PROMPT + `\n\n--- ENVIRONMENT CONTEXT ---\n[ Current Date: ${currentDateStr} ]\n\n--- TARGET TEXT FOR ANALYSIS ---\n` + text.trim() }] }],
+    tools: [{ google_search: {} }],
     generationConfig: { temperature: 0.1, maxOutputTokens: 8192, responseMimeType: 'application/json' }
   };
 
   try {
     console.log('📡 Calling Gemini API...');
-    const { res: gemRes, ok, status, errText } = await callGeminiWithKeyRotation(body);
+    const { res: gemRes, ok, status, errText, grounded, model } = await callGeminiWithKeyRotation(body);
 
     if (!ok) {
       console.error(`❌ All keys failed. Last status: ${status}`);
@@ -179,7 +252,8 @@ Return ONLY extremely strict, valid JSON. No markdown fences.
         corrected_fact: 'Mock Demonstration: Always verify claims through reliable official channels.',
         data_points: { labels: ["Human Written", "Factual Accuracy", "Logical Consistency", "Emotional Objectivity", "Scam/Risk Safety"], values: [20, 15, 40, 25, 10] },
         engine: 'mock',
-        error_hint: 'quota_exceeded'
+        error_hint: 'quota_exceeded',
+        grounded: false
       });
     }
 
@@ -188,7 +262,12 @@ Return ONLY extremely strict, valid JSON. No markdown fences.
 
     const verdict = parsed.verdict === 'FAKE' ? 'FAKE' : 'REAL';
     const confidence = toSafeNum(parsed.confidence, 75);
-    const explanation = typeof parsed.explanation === 'string' ? parsed.explanation : 'No explanation provided.';
+    
+    let explanation = typeof parsed.explanation === 'string' ? parsed.explanation : 'No explanation provided.';
+    if (!grounded) {
+      explanation += "\n\n⚠️ Note: Google Search is currently rate-limited; relying on offline AI knowledge.";
+    }
+
     const corrected_fact = verdict === 'FAKE' && typeof parsed.corrected_fact === 'string' ? parsed.corrected_fact : '';
     
     // Normalize data_points
@@ -200,8 +279,8 @@ Return ONLY extremely strict, valid JSON. No markdown fences.
     const finalValues = aiLabels.map((_, i) => aiValues[i] !== undefined ? aiValues[i] : 70);
     const data_points = { labels: aiLabels, values: finalValues };
 
-    console.log(`✅ Result: ${verdict} (${confidence}%)`);
-    return res.json({ verdict, confidence, explanation, corrected_fact, data_points, engine: 'gemini' });
+    console.log(`✅ Result: ${verdict} (${confidence}%) [Grounded: ${!!grounded}, Model: ${model}]`);
+    return res.json({ verdict, confidence, explanation, corrected_fact, data_points, engine: 'gemini', grounded: !!grounded, model });
 
   } catch (err) {
     console.error(`❌ Unexpected error: ${err.message}`);
@@ -401,14 +480,17 @@ Return ONLY valid JSON (no markdown):
 
 Research content to analyze:\n`;
 
+  const currentDateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
   const body = {
-    contents: [{ parts: [{ text: PROMPT + content.trim() }] }],
+    contents: [{ parts: [{ text: PROMPT + `\n\n--- ENVIRONMENT CONTEXT ---\n[ Current Date: ${currentDateStr} ]\n\n--- TARGET CONTENT FOR ANALYSIS ---\n` + content.trim() }] }],
+    tools: [{ google_search: {} }],
     generationConfig: { temperature: 0.1, maxOutputTokens: 8192, responseMimeType: 'application/json' }
   };
 
   try {
     console.log('📡 Calling AI for research analysis...');
-    const { res: gemRes, ok, status, errText } = await callGeminiWithKeyRotation(body);
+    const { res: gemRes, ok, status, errText, grounded, model } = await callGeminiWithKeyRotation(body);
 
     if (!ok) {
       return res.status(200).json({
@@ -419,7 +501,8 @@ Research content to analyze:\n`;
         supporting_facts: [],
         corrected_fact: 'Mock Demonstration: Always consult peer-reviewed journals for verified scientific consensus.',
         data_points: { labels: ['Credibility','Methodology','Evidence','Peer Review','Consensus'], values: [15, 20, 10, 5, 5] },
-        engine: 'mock', error_hint: 'quota_exceeded'
+        engine: 'mock', error_hint: 'quota_exceeded',
+        grounded: false
       });
     }
 
@@ -428,7 +511,12 @@ Research content to analyze:\n`;
 
     const verdict = ['CREDIBLE','QUESTIONABLE','DEBUNKED'].includes(parsed.verdict) ? parsed.verdict : 'QUESTIONABLE';
     const confidence = toSafeNum(parsed.confidence, 70);
-    const explanation = parsed.explanation || 'Analysis complete.';
+    
+    let explanation = parsed.explanation || 'Analysis complete.';
+    if (!grounded) {
+      explanation += "\n\n⚠️ Note: Google Search is currently rate-limited; relying on offline AI knowledge.";
+    }
+
     const credibility_score = Math.max(5, toSafeNum(parsed.credibility_score, 70));
     const methodology_score = Math.max(5, toSafeNum(parsed.methodology_score, 70));
     const evidence_score = Math.max(5, toSafeNum(parsed.evidence_score, 70));
@@ -444,8 +532,8 @@ Research content to analyze:\n`;
     const aiValues = Array.isArray(parsed.data_points?.values) ? parsed.data_points.values.map(v => Math.max(5, toSafeNum(v))) : fallbackValues;
     const data_points = { labels, values: labels.map((_, i) => aiValues[i] !== undefined ? aiValues[i] : fallbackValues[i]) };
 
-    console.log(`✅ Research Result: ${verdict} (${confidence}%)`);
-    return res.json({ verdict, confidence, explanation, credibility_score, methodology_score, evidence_score, peer_review_likelihood, consensus_score, red_flags, supporting_facts, corrected_fact, data_points, engine: 'gemini' });
+    console.log(`✅ Research Result: ${verdict} (${confidence}%) [Grounded: ${!!grounded}, Model: ${model}]`);
+    return res.json({ verdict, confidence, explanation, credibility_score, methodology_score, evidence_score, peer_review_likelihood, consensus_score, red_flags, supporting_facts, corrected_fact, data_points, engine: 'gemini', grounded: !!grounded, model });
 
   } catch (err) {
     return res.status(500).json({ error: 'Internal server error: ' + err.message });

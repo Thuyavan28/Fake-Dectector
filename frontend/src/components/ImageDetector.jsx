@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import API_BASE from '../config';
 
 // Chart.js loader
 function useChartJs() {
@@ -357,7 +358,7 @@ export default function ImageDetector() {
     setLoading(true); setError(null);
     try {
       const { base64, mimeType } = await compressImage(file);
-      const res = await fetch('/api/analyze/image', {
+      const res = await fetch(`${API_BASE}/api/analyze/image`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: base64, mimeType })
       });

@@ -2,6 +2,8 @@
 // Powered by Google Gemini API via Express backend (/api/analyze)
 // All values come strictly from Gemini's response — no hardcoded data.
 
+import API_BASE from '../config';
+
 export function normalizeConfidence(verdict, raw) {
   if (verdict === 'FAKE' && raw < 80) return Math.floor(Math.random() * (95 - 80) + 80);
   if (verdict === 'REAL' && raw < 75) return Math.floor(Math.random() * (95 - 75) + 75);
@@ -27,7 +29,7 @@ export async function analyzeNews(text) {
     throw new Error('No text provided for analysis.');
   }
 
-  const response = await fetch('/api/analyze', {
+  const response = await fetch(`${API_BASE}/api/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text: text.trim() }),

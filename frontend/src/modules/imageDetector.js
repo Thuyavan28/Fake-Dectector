@@ -1,11 +1,12 @@
 import { normalizeConfidence } from './newsDetector.js';
+import API_BASE from '../config';
 
 export async function analyzeImage(file, base64, apiKey) {
   // First, get dimensions and size for fallback/rule-based just in case
   const w = 0, h = 0; // Or keep the getImageDimensions logic if you want
 
   try {
-    const response = await fetch('/api/analyze-image', {
+    const response = await fetch(`${API_BASE}/api/analyze-image`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ base64: base64, mimeType: file.type })
